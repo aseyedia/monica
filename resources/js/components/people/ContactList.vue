@@ -5,6 +5,16 @@
     height: 43px;
     width: 43px;
   }
+
+  /* Make checkbox column more clickable */
+  table.vgt-table .vgt-checkbox-col {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  table.vgt-table .vgt-checkbox-col:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
 </style>
 
 <style lang="scss" scoped>
@@ -361,8 +371,20 @@ export default {
 
   methods: {
     onRowClick(params) {
-      // Don't navigate when clicking checkbox
+      // Don't navigate when clicking checkbox or checkbox cell
       if (params.event.target.type === 'checkbox') {
+        return;
+      }
+
+      // Check if click is in the checkbox column (first column with vgt-checkbox-col class)
+      const clickedElement = params.event.target;
+      const checkboxCell = clickedElement.closest('.vgt-checkbox-col');
+
+      if (checkboxCell) {
+        // Click is in checkbox column - toggle selection instead of navigating
+        params.event.preventDefault();
+        params.event.stopPropagation();
+        this.toggleRowSelection(params.row, params.pageIndex, params.event.shiftKey);
         return;
       }
 
@@ -374,16 +396,50 @@ export default {
       window.location.href = params.row.route;
     },
 
+    toggleRowSelection(row, rowIndex, shiftKey) {
+      const checkbox = document.querySelector(`[data-row-index="${rowIndex}"] input[type="checkbox"]`);
+
+      if (checkbox) {
+        // Simulate checkbox click
+        checkbox.click();
+
+        // Handle shift-select
+        if (shiftKey) {
+          this.handleShiftSelect(row, rowIndex);
+        } else {
+          this.lastSelectedIndex = rowIndex;
+        }
+      }
+    },
+
     onSelectionChanged(params) {
       this.selectedContacts = params.selectedRows;
     },
 
     onCellClick(params) {
-      // Handle shift-click for range selection
+      // Handle clicks in checkbox column
+      const clickedElement = params.event.target;
+      const checkboxCell = clickedElement.closest('.vgt-checkbox-col');
+
+      if (checkboxCell) {
+        // Prevent default row click behavior
+        params.event.stopPropagation();
+
+        // Handle shift-click for range selection
+        if (params.event.shiftKey && params.event.target.type !== 'checkbox') {
+          params.event.preventDefault();
+          this.handleShiftSelect(params.row, params.rowIndex);
+        } else if (params.event.target.type === 'checkbox') {
+          // Regular checkbox click - track last selected index
+          this.lastSelectedIndex = params.rowIndex;
+        }
+        return;
+      }
+
+      // Original logic for other cells
       if (params.event.shiftKey && params.event.target.type === 'checkbox') {
         this.handleShiftSelect(params.row, params.rowIndex);
       } else if (params.event.target.type === 'checkbox') {
-        // Regular checkbox click - track last selected index
         this.lastSelectedIndex = params.rowIndex;
       }
     },
