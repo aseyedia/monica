@@ -124,23 +124,40 @@ POST /api/contacts/bulk/tags
    - Uses vue-good-table's built-in selection
    - `selectOnCheckboxOnly` prevents row click conflicts
    - Selection state tracked in `selectedContacts` array
+   - **Large Clickable Area**: Entire checkbox cell is clickable, not just the tiny checkbox
+   - Visual hover feedback on checkbox column
+   - Prevents accidental navigation when selecting
 
-2. **Bulk Actions Toolbar**
-   - Appears when contacts are selected
+2. **Selection Helper Bar** (Always Visible)
+   - "Select All on Page" button - selects all visible contacts
+   - "Deselect All" button - clears all selections
+   - Helpful tip about shift-select functionality
+   - Live selection count display
+
+3. **Shift-Select Range Selection**
+   - Click one checkbox, hold Shift, click another
+   - Automatically selects all contacts in between
+   - Works in entire checkbox cell area, not just the checkbox itself
+   - Tracks last selected index for intuitive behavior
+
+4. **Bulk Actions Toolbar** (Appears When Items Selected)
    - Shows count of selected contacts
-   - Contains "Bulk Edit" and "Delete Selected" buttons
+   - "Clear Selection" button
+   - "Bulk Edit" button - opens bulk edit modal
+   - "Delete Selected" button - triggers bulk deletion with confirmation
 
-3. **Bulk Edit Modal**
+5. **Bulk Edit Modal**
    - Gender selector with "No Change" option
    - Tag input field (press Enter to add tags)
    - Tag badges with remove buttons
    - Loading state during processing
 
-4. **User Experience**
+6. **User Experience**
    - Confirmation dialog for bulk deletion
    - Success/error alerts after operations
    - Automatic list refresh after operations
    - Selection clears after successful operation
+   - Large, forgiving click areas for selection
 
 ## Error Handling
 
@@ -186,12 +203,19 @@ Three comprehensive test suites were created:
 To manually test the feature:
 
 1. Navigate to the contacts list page
-2. Select multiple contacts using checkboxes
+2. Select multiple contacts using checkboxes:
+   - Click individual checkboxes
+   - OR click anywhere in the checkbox cell (entire column is clickable!)
+   - Use "Select All on Page" button for quick selection
+   - Use Shift+Click to select ranges
 3. Test each operation:
    - **Bulk Edit**: Update gender and/or add tags
    - **Delete**: Confirm deletion works
 4. Verify:
    - Operations apply to all selected contacts
+   - Clicking near checkbox doesn't navigate to contact page
+   - Shift-select works in the entire checkbox cell
+   - Visual hover feedback on checkbox column
    - List refreshes after operations
    - Error handling for archived contacts
 
