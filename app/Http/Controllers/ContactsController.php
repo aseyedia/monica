@@ -740,8 +740,11 @@ class ContactsController extends Controller
             $contacts = $contacts->tags('NONE');
         }
 
-        // get the number of contacts per page
-        $perPage = $request->has('perPage') ? $request->input('perPage') : config('monica.number_of_contacts_pagination');
+        // get the number of contacts per page (-1 means "All")
+        $perPage = $request->has('perPage') ? (int) $request->input('perPage') : config('monica.number_of_contacts_pagination');
+        if ($perPage < 1) {
+            $perPage = PHP_INT_MAX;
+        }
 
         // search contacts
         $contacts = $contacts->search($request->input('search') ?? '', $accountId, 'is_starred', 'desc', $sort)

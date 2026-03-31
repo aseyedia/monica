@@ -450,28 +450,18 @@ export default {
         return;
       }
 
-      // Determine range
       const start = Math.min(this.lastSelectedIndex, clickedIndex);
       const end = Math.max(this.lastSelectedIndex, clickedIndex);
 
-      // Select all rows in range
-      const rowsToSelect = [];
+      // Click unchecked checkboxes in the range via the table's own DOM rows
+      const tableRows = this.$refs.contactTable.$el.querySelectorAll('tbody tr');
       for (let i = start; i <= end; i++) {
-        if (this.contacts[i]) {
-          rowsToSelect.push(this.contacts[i]);
+        if (tableRows[i]) {
+          const checkbox = tableRows[i].querySelector('input[type="checkbox"]');
+          if (checkbox && !checkbox.checked) {
+            checkbox.click();
+          }
         }
-      }
-
-      // Use vue-good-table's selection if available
-      if (this.$refs.contactTable && this.$refs.contactTable.selectRow) {
-        rowsToSelect.forEach(row => {
-          this.$refs.contactTable.selectRow(row);
-        });
-      } else {
-        // Fallback: manually update selection
-        const newSelectedIds = new Set(this.selectedContacts.map(c => c.id));
-        rowsToSelect.forEach(row => newSelectedIds.add(row.id));
-        this.selectedContacts = this.contacts.filter(c => newSelectedIds.has(c.id));
       }
 
       this.lastSelectedIndex = clickedIndex;
