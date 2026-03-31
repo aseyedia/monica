@@ -99,13 +99,31 @@
 
 <template>
   <div>
+    <!-- Selection Helper Bar -->
+    <div class="selection-helper mb2 pa2 bg-near-white ba b--light-gray br2">
+      <div class="flex items-center justify-between flex-wrap">
+        <div class="flex items-center">
+          <button class="btn btn-sm btn-secondary mr2" @click="selectAllOnPage">
+            Select All on Page
+          </button>
+          <button class="btn btn-sm btn-secondary mr2" @click="deselectAll">
+            Deselect All
+          </button>
+          <span class="f6 gray">Tip: Hold Shift and click to select range</span>
+        </div>
+        <div v-if="selectedContacts.length > 0" class="f6">
+          <strong>{{ selectedContacts.length }}</strong> of {{ contacts.length }} selected
+        </div>
+      </div>
+    </div>
+
     <!-- Bulk Actions Toolbar -->
     <div v-if="selectedContacts.length > 0" class="bulk-actions-toolbar mb3 pa3 bg-light-gray ba b--moon-gray br2">
       <div class="flex items-center justify-between flex-wrap">
         <div class="flex items-center mb2 mb0-ns">
           <strong class="mr3">{{ selectedContacts.length }} selected</strong>
           <button class="btn btn-secondary mr2" @click="clearSelection">
-            Cancel
+            Clear Selection
           </button>
         </div>
         <div class="flex items-center mb2 mb0-ns">
@@ -120,6 +138,7 @@
     </div>
 
     <vue-good-table
+      ref="contactTable"
       mode="remote"
       :columns="columns"
       :rows="contacts"
@@ -157,6 +176,7 @@
       @on-search="onSearch"
       @on-row-click="onRowClick"
       @on-selected-rows-change="onSelectionChanged"
+      @on-cell-click="onCellClick"
     >
       <div slot="emptystate" class="tc">
         {{ $t('people.people_search_no_results') }}
@@ -284,6 +304,7 @@ export default {
       searchEntries: null,
       ready: false,
       selectedContacts: [],
+      lastSelectedIndex: null, // For shift-select functionality
       showBulkEditModal: false,
       isProcessing: false,
       genders: [],
@@ -357,10 +378,70 @@ export default {
       this.selectedContacts = params.selectedRows;
     },
 
+    onCellClick(params) {
+      // Handle shift-click for range selection
+      if (params.event.shiftKey && params.event.target.type === 'checkbox') {
+        this.handleShiftSelect(params.row, params.rowIndex);
+      } else if (params.event.target.type === 'checkbox') {
+        // Regular checkbox click - track last selected index
+        this.lastSelectedIndex = params.rowIndex;
+      }
+    },
+
+    handleShiftSelect(clickedRow, clickedIndex) {
+      if (this.lastSelectedIndex === null) {
+        this.lastSelectedIndex = clickedIndex;
+        return;
+      }
+
+      // Determine range
+      const start = Math.min(this.lastSelectedIndex, clickedIndex);
+      const end = Math.max(this.lastSelectedIndex, clickedIndex);
+
+      // Select all rows in range
+      const rowsToSelect = [];
+      for (let i = start; i <= end; i++) {
+        if (this.contacts[i]) {
+          rowsToSelect.push(this.contacts[i]);
+        }
+      }
+
+      // Use vue-good-table's selection if available
+      if (this.$refs.contactTable && this.$refs.contactTable.selectRow) {
+        rowsToSelect.forEach(row => {
+          this.$refs.contactTable.selectRow(row);
+        });
+      } else {
+        // Fallback: manually update selection
+        const newSelectedIds = new Set(this.selectedContacts.map(c => c.id));
+        rowsToSelect.forEach(row => newSelectedIds.add(row.id));
+        this.selectedContacts = this.contacts.filter(c => newSelectedIds.has(c.id));
+      }
+
+      this.lastSelectedIndex = clickedIndex;
+    },
+
+    selectAllOnPage() {
+      // Select all contacts on current page
+      if (this.$refs.contactTable && this.$refs.contactTable.selectAllRows) {
+        this.$refs.contactTable.selectAllRows();
+      } else {
+        // Fallback: manually select all
+        this.selectedContacts = [...this.contacts];
+      }
+    },
+
+    deselectAll() {
+      this.clearSelection();
+    },
+
     clearSelection() {
       this.selectedContacts = [];
+      this.lastSelectedIndex = null;
       // Clear checkboxes in vue-good-table
-      this.$refs.table?.clearSelected();
+      if (this.$refs.contactTable && this.$refs.contactTable.unselectAllRows) {
+        this.$refs.contactTable.unselectAllRows();
+      }
     },
 
     updateParams(newProps) {
