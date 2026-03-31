@@ -19,10 +19,106 @@
     background: inherit;
     color: inherit;
   }
+
+  .bulk-actions-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 0;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 0.25rem;
+    background-color: #007bff;
+    color: white;
+  }
+
+  .badge button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+  }
 </style>
 
 <template>
   <div>
+    <!-- Bulk Actions Toolbar -->
+    <div v-if="selectedContacts.length > 0" class="bulk-actions-toolbar mb3 pa3 bg-light-gray ba b--moon-gray br2">
+      <div class="flex items-center justify-between flex-wrap">
+        <div class="flex items-center mb2 mb0-ns">
+          <strong class="mr3">{{ selectedContacts.length }} selected</strong>
+          <button class="btn btn-secondary mr2" @click="clearSelection">
+            Cancel
+          </button>
+        </div>
+        <div class="flex items-center mb2 mb0-ns">
+          <button class="btn btn-primary mr2" @click="showBulkEditModal = true">
+            Bulk Edit
+          </button>
+          <button class="btn btn-danger" @click="confirmBulkDelete">
+            Delete Selected
+          </button>
+        </div>
+      </div>
+    </div>
+
     <vue-good-table
       mode="remote"
       :columns="columns"
@@ -31,6 +127,10 @@
       :row-style-class="getRowStyleClass"
       style-class="vgt-table"
       :rtl="!dirltr"
+      :select-options="{
+        enabled: true,
+        selectOnCheckboxOnly: true,
+      }"
       :sort-options="{
         enabled: false,
       }"
@@ -56,6 +156,7 @@
       @on-per-page-change="onPerPageChange"
       @on-search="onSearch"
       @on-row-click="onRowClick"
+      @on-selected-rows-change="onSelectionChanged"
     >
       <div slot="emptystate" class="tc">
         {{ $t('people.people_search_no_results') }}
@@ -105,6 +206,55 @@
         </template>
       </template>
     </vue-good-table>
+
+    <!-- Bulk Edit Modal -->
+    <div v-if="showBulkEditModal" class="modal-overlay" @click="closeBulkEditModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>Bulk Edit Contacts</h3>
+          <button class="close-button" @click="closeBulkEditModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="mb3">
+            <label class="db mb2 fw6">Gender</label>
+            <select v-model="bulkEditData.gender_id" class="form-control">
+              <option :value="null">-- No Change --</option>
+              <option v-for="gender in genders" :key="gender.id" :value="gender.id">
+                {{ gender.name }}
+              </option>
+            </select>
+          </div>
+          <div class="mb3">
+            <label class="db mb2 fw6">Add Tags</label>
+            <input
+              v-model="tagInput"
+              type="text"
+              class="form-control"
+              placeholder="Type tag name and press Enter"
+              @keydown.enter.prevent="addTag"
+            >
+            <div v-if="bulkEditData.tags.length > 0" class="mt2">
+              <span
+                v-for="(tag, index) in bulkEditData.tags"
+                :key="index"
+                class="badge mr2 mb2"
+              >
+                {{ tag }}
+                <button class="ml1" @click="removeTag(index)">&times;</button>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary mr2" @click="closeBulkEditModal">
+            Cancel
+          </button>
+          <button class="btn btn-primary" :disabled="isProcessing" @click="applyBulkEdit">
+            {{ isProcessing ? 'Processing...' : 'Apply Changes' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -133,6 +283,15 @@ export default {
       contacts: [],
       searchEntries: null,
       ready: false,
+      selectedContacts: [],
+      showBulkEditModal: false,
+      isProcessing: false,
+      genders: [],
+      bulkEditData: {
+        gender_id: null,
+        tags: [],
+      },
+      tagInput: '',
 
       totalRecords: 0,
       perPageDropdown: [30, 50, 100],
@@ -176,16 +335,32 @@ export default {
     }, this.debounceWait);
 
     this._loadItems();
+    this._loadGenders();
   },
 
   methods: {
     onRowClick(params) {
+      // Don't navigate when clicking checkbox
+      if (params.event.target.type === 'checkbox') {
+        return;
+      }
+
       params.event.preventDefault();
       if (params.event.ctrlKey) {
         window.open(params.row.route, '_blank');
         return;
       }
       window.location.href = params.row.route;
+    },
+
+    onSelectionChanged(params) {
+      this.selectedContacts = params.selectedRows;
+    },
+
+    clearSelection() {
+      this.selectedContacts = [];
+      // Clear checkboxes in vue-good-table
+      this.$refs.table?.clearSelected();
     },
 
     updateParams(newProps) {
@@ -243,9 +418,121 @@ export default {
         });
     },
 
+    _loadGenders() {
+      axios.get('/api/genders')
+        .then(response => {
+          this.genders = response.data.data;
+        })
+        .catch(error => {
+          console.error('Failed to load genders:', error);
+        });
+    },
+
     getRowStyleClass() {
       return 'people-list-item bg-white pointer';
-    }
+    },
+
+    closeBulkEditModal() {
+      this.showBulkEditModal = false;
+      this.bulkEditData = {
+        gender_id: null,
+        tags: [],
+      };
+      this.tagInput = '';
+    },
+
+    addTag() {
+      if (this.tagInput.trim() && !this.bulkEditData.tags.includes(this.tagInput.trim())) {
+        this.bulkEditData.tags.push(this.tagInput.trim());
+        this.tagInput = '';
+      }
+    },
+
+    removeTag(index) {
+      this.bulkEditData.tags.splice(index, 1);
+    },
+
+    async applyBulkEdit() {
+      if (this.selectedContacts.length === 0) {
+        return;
+      }
+
+      this.isProcessing = true;
+      const contactIds = this.selectedContacts.map(c => c.id);
+      const promises = [];
+
+      try {
+        // Update gender if changed
+        if (this.bulkEditData.gender_id !== null) {
+          promises.push(
+            axios.post('/api/contacts/bulk/gender', {
+              contact_ids: contactIds,
+              gender_id: this.bulkEditData.gender_id,
+            })
+          );
+        }
+
+        // Add tags if any
+        if (this.bulkEditData.tags.length > 0) {
+          promises.push(
+            axios.post('/api/contacts/bulk/tags', {
+              contact_ids: contactIds,
+              tags: this.bulkEditData.tags,
+            })
+          );
+        }
+
+        await Promise.all(promises);
+
+        // Reload contacts
+        this._loadItems();
+        this.clearSelection();
+        this.closeBulkEditModal();
+
+        // Show success message
+        alert('Bulk edit completed successfully!');
+      } catch (error) {
+        console.error('Bulk edit failed:', error);
+        alert('Bulk edit failed. Please try again.');
+      } finally {
+        this.isProcessing = false;
+      }
+    },
+
+    confirmBulkDelete() {
+      if (this.selectedContacts.length === 0) {
+        return;
+      }
+
+      const count = this.selectedContacts.length;
+      if (!confirm(`Are you sure you want to delete ${count} contact(s)? This action cannot be undone.`)) {
+        return;
+      }
+
+      this.performBulkDelete();
+    },
+
+    async performBulkDelete() {
+      this.isProcessing = true;
+      const contactIds = this.selectedContacts.map(c => c.id);
+
+      try {
+        await axios.post('/api/contacts/bulk/destroy', {
+          contact_ids: contactIds,
+        });
+
+        // Reload contacts
+        this._loadItems();
+        this.clearSelection();
+
+        alert('Contacts deleted successfully!');
+      } catch (error) {
+        console.error('Bulk delete failed:', error);
+        alert('Bulk delete failed. Please try again.');
+      } finally {
+        this.isProcessing = false;
+      }
+    },
   }
 };
 </script>
