@@ -4,12 +4,8 @@ namespace App\Services\Contact\Contact;
 
 use App\Services\BaseService;
 use App\Models\Contact\Contact;
-use App\Services\QueuableService;
-use App\Services\DispatchableService;
-
-class BulkDestroyContacts extends BaseService implements QueuableService
+class BulkDestroyContacts extends BaseService
 {
-    use DispatchableService;
 
     /**
      * Get the validation rules that apply to the service.

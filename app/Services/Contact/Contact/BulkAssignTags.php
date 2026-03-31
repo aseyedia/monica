@@ -5,13 +5,10 @@ namespace App\Services\Contact\Contact;
 use App\Services\BaseService;
 use App\Models\Contact\Contact;
 use App\Models\Contact\Tag;
-use App\Services\QueuableService;
-use App\Services\DispatchableService;
 use App\Services\Contact\Tag\AssociateTag;
 
-class BulkAssignTags extends BaseService implements QueuableService
+class BulkAssignTags extends BaseService
 {
-    use DispatchableService;
 
     /**
      * Get the validation rules that apply to the service.
