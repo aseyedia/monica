@@ -53,6 +53,7 @@ class Contact extends Model
         'last_talked_to',
         'last_consulted_at',
         'stay_in_touch_trigger_date',
+        'stay_in_touch_last_contacted',
         'created_at',
         'updated_at',
     ];
@@ -1540,6 +1541,22 @@ class Contact extends Model
         $this->save();
 
         $this->timestamps = $timestamps;
+    }
+
+    /**
+     * Mark this contact as contacted today, resetting the stay-in-touch cycle.
+     */
+    public function markAsContacted(): void
+    {
+        $timestamps = $this->timestamps;
+        $this->timestamps = false;
+        $this->stay_in_touch_last_contacted = now();
+        $this->save();
+        $this->timestamps = $timestamps;
+
+        if ($this->stay_in_touch_frequency) {
+            $this->setStayInTouchTriggerDate($this->stay_in_touch_frequency);
+        }
     }
 
     /**

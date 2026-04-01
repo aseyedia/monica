@@ -23,6 +23,11 @@ Route::group(['middleware' => ['auth:api']], function () {
         Route::post('/me/contact', 'ApiMeController@store');
         Route::delete('/me/contact', 'ApiMeController@destroy');
 
+        // Bulk contact operations
+        Route::post('/contacts/bulk/destroy', 'ApiBulkContactController@bulkDestroy');
+        Route::post('/contacts/bulk/gender', 'ApiBulkContactController@bulkUpdateGender');
+        Route::post('/contacts/bulk/tags', 'ApiBulkContactController@bulkAssignTags');
+
         // Contacts properties
         Route::put('/contacts/{contact}/work', 'ApiContactController@updateWork');
         Route::put('/contacts/{contact}/food', 'ApiContactController@updateFoodPreferences');

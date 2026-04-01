@@ -639,10 +639,61 @@ class ContactsController extends Controller
             throw new \LogicException(trans('people.stay_in_touch_invalid'));
         }
 
-        $contact->setStayInTouchTriggerDate($frequency);
+        $startDate = null;
+        if ($request->input('start_date')) {
+            $startDate = \Carbon\Carbon::parse($request->input('start_date'));
+        }
+
+        $contact->setStayInTouchTriggerDate($frequency, $startDate);
 
         return [
             'frequency' => $frequency,
+            'trigger_date' => $contact->stay_in_touch_trigger_date,
+            'last_contacted' => $contact->stay_in_touch_last_contacted,
+        ];
+    }
+
+    /**
+     * Mark a contact as contacted today, resetting the stay-in-touch cycle.
+     *
+     * @param  Request  $request
+     * @param  Contact  $contact
+     * @return array
+     */
+    public function markAsContacted(Request $request, Contact $contact)
+    {
+        $contact->throwInactive();
+
+        if (! $contact->stay_in_touch_frequency) {
+            abort(422, trans('people.stay_in_touch_invalid'));
+        }
+
+        $contact->markAsContacted();
+
+        return [
+            'last_contacted' => $contact->stay_in_touch_last_contacted,
+            'trigger_date' => $contact->stay_in_touch_trigger_date,
+        ];
+    }
+
+    /**
+     * Snooze the stay-in-touch reminder by N days.
+     *
+     * @param  Request  $request
+     * @param  Contact  $contact
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function snoozeStayInTouch(Request $request, Contact $contact)
+    {
+        $days = max(1, intval($request->input('days', 7)));
+
+        $timestamps = $contact->timestamps;
+        $contact->timestamps = false;
+        $contact->stay_in_touch_trigger_date = ($contact->stay_in_touch_trigger_date ?? now())->copy()->addDays($days);
+        $contact->save();
+        $contact->timestamps = $timestamps;
+
+        return [
             'trigger_date' => $contact->stay_in_touch_trigger_date,
         ];
     }
@@ -740,8 +791,11 @@ class ContactsController extends Controller
             $contacts = $contacts->tags('NONE');
         }
 
-        // get the number of contacts per page
-        $perPage = $request->has('perPage') ? $request->input('perPage') : config('monica.number_of_contacts_pagination');
+        // get the number of contacts per page (-1 means "All")
+        $perPage = $request->has('perPage') ? (int) $request->input('perPage') : config('monica.number_of_contacts_pagination');
+        if ($perPage < 1) {
+            $perPage = PHP_INT_MAX;
+        }
 
         // search contacts
         $contacts = $contacts->search($request->input('search') ?? '', $accountId, 'is_starred', 'desc', $sort)

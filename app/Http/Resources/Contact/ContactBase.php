@@ -36,6 +36,7 @@ trait ContactBase
             'last_activity_together' => $this->when(! $this->is_partial, $this->getLastActivityDate()),
             'stay_in_touch_frequency' => $this->when(! $this->is_partial, $this->stay_in_touch_frequency),
             'stay_in_touch_trigger_date' => $this->when(! $this->is_partial, DateHelper::getTimestamp($this->stay_in_touch_trigger_date)),
+            'stay_in_touch_last_contacted' => $this->when(! $this->is_partial, DateHelper::getTimestamp($this->stay_in_touch_last_contacted)),
             'information' => [
                 'relationships' => $this->when(! $this->is_partial, [
                     'love' => [

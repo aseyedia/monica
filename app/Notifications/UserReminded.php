@@ -18,54 +18,34 @@ class UserReminded extends LaravelNotification implements ShouldQueue, MailNotif
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * @var Reminder
-     */
     public $reminder;
 
-    /**
-     * Create a new message instance.
-     *
-     * @return void
-     */
     public function __construct(Reminder $reminder)
     {
         $this->reminder = $reminder;
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array
-     */
     public function via()
     {
         return ['mail'];
     }
 
-    /**
-     * Get the mail representation of the notification.
-     *
-     * @param  User  $user
-     * @return \Illuminate\Notifications\Messages\MailMessage
-     */
     public function toMail(User $user): MailMessage
     {
         $contact = Contact::where('account_id', $user->account_id)
             ->findOrFail($this->reminder->contact_id);
 
-        $message = (new MailMessage)
-            ->subject(trans('mail.subject_line', ['contact' => $contact->name]))
-            ->greeting(trans('mail.greetings', ['username' => $user->first_name]))
-            ->line(trans('mail.want_reminded_of', ['reason' => $this->reminder->title]))
-            ->line(trans('mail.for', ['name' => $contact->name]))
-            ->action(trans('mail.footer_contact_info2', ['name' => $contact->name]), $contact->getLink());
-
-        if (! is_null($this->reminder->description)) {
-            $message = $message
-                ->line(trans('mail.comment', ['comment' => $this->reminder->description]));
-        }
-
-        return $message;
+        return (new MailMessage)
+            ->subject('Reminder: ' . $this->reminder->title . ' — ' . $contact->name)
+            ->markdown('emails.reminder', [
+                'userName'    => $user->first_name,
+                'title'       => $this->reminder->title,
+                'description' => $this->reminder->description,
+                'contactName' => $contact->name,
+                'contactUrl'  => $contact->getLink(),
+                'isDaysAhead' => false,
+                'daysAhead'   => 0,
+                'dueDate'     => null,
+            ]);
     }
 }
