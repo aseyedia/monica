@@ -50,6 +50,15 @@
     opacity: 0.5;
     pointer-events: none;
   }
+  .sit-btn--remove {
+    border-color: #d4a8a8;
+    background: #faeeee;
+    color: #7c3f3f;
+    cursor: pointer;
+  }
+  .sit-btn--remove:hover {
+    background: #f0d8d8;
+  }
 
   /* Modal styles */
   .sit-status {
@@ -97,6 +106,21 @@
     background: #dbeafe;
     border-color: #93c5fd;
     color: #1d4ed8;
+  }
+
+  .sit-status-row--preview {
+    color: #16a34a;
+    font-style: italic;
+  }
+  .sit-status-row--preview .sit-status-label {
+    color: #16a34a;
+  }
+  .sit-status-row--removed {
+    color: #dc2626;
+    font-style: italic;
+  }
+  .sit-status-row--removed .sit-status-label {
+    color: #dc2626;
   }
 
   .sit-form-row {
@@ -157,14 +181,22 @@
     <sweet-modal ref="updateModal" overlay-theme="dark" :title="$t('people.stay_in_touch_modal_title')">
 
       <!-- Status summary -->
-      <div v-if="isActive" class="sit-status">
-        <div class="sit-status-row">
+      <div v-if="isActive || stateInput" class="sit-status">
+        <div v-if="isActive" class="sit-status-row">
           <span class="sit-status-label">Current</span>
-          <span>{{ frequencyLabel }}</span>
+          <span>{{ savedFrequencyLabel }}</span>
         </div>
-        <div class="sit-status-row">
+        <div v-if="isActive" class="sit-status-row">
           <span class="sit-status-label">Next due</span>
           <span>{{ nextTriggerDate ? formatDate(nextTriggerDate) : 'Not set' }}</span>
+        </div>
+        <div v-if="isDirty && stateInput" class="sit-status-row sit-status-row--preview">
+          <span class="sit-status-label">&#10132; New next due</span>
+          <span>{{ previewNextDue }}</span>
+        </div>
+        <div v-if="isActive && !stateInput" class="sit-status-row sit-status-row--removed">
+          <span class="sit-status-label">&#10005; Will be removed</span>
+          <span></span>
         </div>
         <div class="sit-status-row">
           <span class="sit-status-label">Last contacted</span>
@@ -223,6 +255,9 @@
       <div slot="button" class="tc">
         <a class="btn" href="" @click.prevent="closeModal()">
           {{ $t('app.cancel') }}
+        </a>
+        <a v-if="isActive" class="btn sit-btn--remove" href="" @click.prevent="remove()" style="margin-right:8px">
+          Remove
         </a>
         <a class="btn btn-primary" href="" @click.prevent="update()">
           {{ $t('app.save') }}
@@ -288,6 +323,8 @@ export default {
       errorMessage: '',
       frequencyValue: 1,
       frequencyUnit: 'days',
+      savedFrequencyValue: 1,
+      savedFrequencyUnit: 'days',
       startDate: '',
       nextTriggerDate: null,
       lastContactedDate: null,
@@ -324,6 +361,53 @@ export default {
       return this.$tc('people.stay_in_touch_frequency', days, { count: days });
     },
 
+    savedFrequencyInDays() {
+      const v = parseInt(this.savedFrequencyValue) || 1;
+      if (this.savedFrequencyUnit === 'weeks') return v * 7;
+      if (this.savedFrequencyUnit === 'months') return v * 30;
+      return v;
+    },
+
+    savedFrequencyLabel() {
+      const v = parseInt(this.savedFrequencyValue) || 1;
+      if (this.savedFrequencyUnit === 'weeks') {
+        return v === 1 ? 'every week' : 'every ' + v + ' weeks';
+      }
+      if (this.savedFrequencyUnit === 'months') {
+        return v === 1 ? 'every month' : 'every ' + v + ' months';
+      }
+      return this.$tc('people.stay_in_touch_frequency', this.savedFrequencyInDays, { count: this.savedFrequencyInDays });
+    },
+
+    isDirty() {
+      if (!this.isActive && this.stateInput) return true;
+      if (this.isActive && !this.stateInput) return true;
+      if (this.frequencyInDays !== this.savedFrequencyInDays) return true;
+      if (this.startDate) return true;
+      return false;
+    },
+
+    previewNextDue() {
+      var moment = require('moment-timezone');
+      moment.locale(this._i18n.locale);
+      moment.tz.setDefault('UTC');
+      var base;
+      if (this.startDate) {
+        base = moment(this.startDate);
+      } else if (this.lastContactedDate) {
+        base = moment(this.lastContactedDate);
+      } else {
+        base = moment();
+      }
+      var next = base.clone().add(this.frequencyInDays, 'days');
+      // If the computed date is in the past, roll forward
+      while (next.isBefore(moment(), 'day')) {
+        next.add(this.frequencyInDays, 'days');
+      }
+      var date = moment.tz(next, this.$root.timezone);
+      return date.format('LL');
+    },
+
     tooltipText() {
       var lines = [];
       if (this.nextTriggerDate) {
@@ -353,9 +437,13 @@ export default {
         const detected = this.detectUnit(this.frequency);
         this.frequencyValue = detected.value;
         this.frequencyUnit = detected.unit;
+        this.savedFrequencyValue = detected.value;
+        this.savedFrequencyUnit = detected.unit;
       } else {
         this.frequencyValue = 1;
         this.frequencyUnit = 'days';
+        this.savedFrequencyValue = 1;
+        this.savedFrequencyUnit = 'days';
       }
     },
 
@@ -418,12 +506,15 @@ export default {
           this.nextTriggerDate = response.data.trigger_date;
           this.lastContactedDate = response.data.last_contacted;
 
-          // Re-detect unit from saved frequency for correct display
+          // Sync saved state for dirty tracking
           if (this.stateInput) {
             var detected = this.detectUnit(this.frequencyInDays);
             this.frequencyValue = detected.value;
             this.frequencyUnit = detected.unit;
+            this.savedFrequencyValue = detected.value;
+            this.savedFrequencyUnit = detected.unit;
           }
+          this.startDate = '';
 
           this.$notify({
             group: 'stay-in-touch',
@@ -495,6 +586,11 @@ export default {
             type: 'error',
           });
         }.bind(this));
+    },
+
+    remove() {
+      this.stateInput = false;
+      this.update();
     },
 
     onFrequencyInput(value) {
