@@ -6,22 +6,18 @@ Time to reach out to **{{ $contactName }}**.
 You set a reminder to stay in touch every {{ $frequencyLabel }}.
 
 @component('mail::panel')
-@if ($lastContacted)
-**Last contacted:** {{ $lastContacted }} &nbsp;·&nbsp; {{ $daysSince }} {{ $daysSince === 1 ? 'day' : 'days' }} ago
-@else
-**Last contacted:** Never recorded
-@endif
-@if ($nextTriggerDate)
-**Next reminder:** {{ $nextTriggerDate }}
-@endif
+**Last contacted:** {{ $lastContacted ? $lastContacted . ' (' . $daysSince . ' ' . ($daysSince === 1 ? 'day' : 'days') . ' ago)' : 'Never recorded' }}
+
+**Next reminder:** {{ $nextTriggerDate ?? 'Not set' }}
 @endcomponent
 
 @if ($birthdayToday)
 🎂 **Today is {{ $contactFirstName }}'s birthday!** Don't forget to wish them well.
+
 @elseif ($birthdaySoon)
 🎁 **Upcoming birthday:** {{ $contactFirstName }}'s birthday is in {{ $birthdayDays }} {{ $birthdayDays === 1 ? 'day' : 'days' }} on **{{ $birthdayDate }}**.
-@endif
 
+@endif
 @component('mail::button', ['url' => $contactUrl, 'color' => 'primary'])
 View {{ $contactFirstName }}'s Profile
 @endcomponent

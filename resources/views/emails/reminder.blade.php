@@ -9,9 +9,8 @@ A reminder is due **today**.
 
 @component('mail::panel')
 **{{ $title }}**
-@if ($contactName)
+
 For: {{ $contactName }}
-@endif
 @if ($description)
 
 {{ $description }}
