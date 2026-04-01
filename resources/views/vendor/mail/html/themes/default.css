@@ -103,10 +103,11 @@ img {
 }
 
 .header a {
-    color: #3d4852;
+    color: #4f46e5;
     font-size: 19px;
     font-weight: bold;
     text-decoration: none;
+    letter-spacing: -0.3px;
 }
 
 /* Logo */
@@ -231,20 +232,20 @@ img {
 
 .button-blue,
 .button-primary {
-    background-color: #2d3748;
-    border-bottom: 8px solid #2d3748;
-    border-left: 18px solid #2d3748;
-    border-right: 18px solid #2d3748;
-    border-top: 8px solid #2d3748;
+    background-color: #4f46e5;
+    border-bottom: 8px solid #4338ca;
+    border-left: 18px solid #4f46e5;
+    border-right: 18px solid #4f46e5;
+    border-top: 8px solid #4f46e5;
 }
 
 .button-green,
 .button-success {
-    background-color: #48bb78;
-    border-bottom: 8px solid #48bb78;
-    border-left: 18px solid #48bb78;
-    border-right: 18px solid #48bb78;
-    border-top: 8px solid #48bb78;
+    background-color: #16a34a;
+    border-bottom: 8px solid #15803d;
+    border-left: 18px solid #16a34a;
+    border-right: 18px solid #16a34a;
+    border-top: 8px solid #16a34a;
 }
 
 .button-red,
@@ -259,18 +260,20 @@ img {
 /* Panels */
 
 .panel {
-    border-left: #2d3748 solid 4px;
+    border-left: #4f46e5 solid 4px;
+    border-radius: 0 6px 6px 0;
     margin: 21px 0;
 }
 
 .panel-content {
-    background-color: #edf2f7;
-    color: #718096;
-    padding: 16px;
+    background-color: #f5f5ff;
+    color: #3d4852;
+    padding: 16px 20px;
+    border-radius: 0 6px 6px 0;
 }
 
 .panel-content p {
-    color: #718096;
+    color: #3d4852;
 }
 
 .panel-item {
