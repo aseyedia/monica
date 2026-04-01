@@ -132,29 +132,27 @@
           </p>
 
           <!-- Toggle + frequency value + unit -->
-          <div class="mb3">
-            <toggle-button class="mr2" :sync="true" :labels="true" :value="stateInput" @change="stateInput = !stateInput" />
-            <div class="dib relative" style="top: -2px;">
-              <span class="mr1">{{ $t('people.stay_in_touch_modal_label') }}</span>
-              <form-input
-                :id="'frequency'"
-                v-model.number="frequencyValue"
-                :input-type="'number'"
-                :width="55"
-                :required="true"
-                :validator="$v.frequencyValue"
-                @input="onFrequencyInput($event)"
-              />
-              <select v-model="frequencyUnit" class="unit-select">
-                <option value="days">{{ $t('people.stay_in_touch_modal_unit_days') }}</option>
-                <option value="weeks">{{ $t('people.stay_in_touch_modal_unit_weeks') }}</option>
-                <option value="months">{{ $t('people.stay_in_touch_modal_unit_months') }}</option>
-              </select>
-            </div>
+          <div class="mb3 flex items-center flex-wrap" style="gap: 8px;">
+            <toggle-button :sync="true" :labels="true" :value="stateInput" @change="stateInput = !stateInput" />
+            <span>{{ $t('people.stay_in_touch_modal_label') }}</span>
+            <form-input
+              :id="'frequency'"
+              v-model.number="frequencyValue"
+              :input-type="'number'"
+              :width="55"
+              :required="true"
+              :validator="$v.frequencyValue"
+              @input="onFrequencyInput($event)"
+            />
+            <select v-model="frequencyUnit" class="unit-select">
+              <option value="days">{{ $t('people.stay_in_touch_modal_unit_days') }}</option>
+              <option value="weeks">{{ $t('people.stay_in_touch_modal_unit_weeks') }}</option>
+              <option value="months">{{ $t('people.stay_in_touch_modal_unit_months') }}</option>
+            </select>
           </div>
 
           <!-- Start date -->
-          <div class="mb3" :class="[ dirltr ? 'tl' : 'tr' ]">
+          <div class="mb3 tl">
             <label class="db mb1 f6 b">{{ $t('people.stay_in_touch_modal_start_date') }}</label>
             <input
               v-model="startDate"
