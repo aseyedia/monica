@@ -22,6 +22,12 @@ return [
 
     'stay_in_touch_subject_line' => 'Stay in touch with :name',
     'stay_in_touch_subject_description' => 'You asked to be reminded to stay in touch with :name every :frequency day.|You asked to be reminded to stay in touch with :name every :frequency days.',
+    'stay_in_touch_last_contacted' => 'You last marked :name as contacted on :date (:days days ago).',
+    'stay_in_touch_never_contacted' => 'You have never marked :name as contacted.',
+    'stay_in_touch_birthday_soon' => ':name\'s birthday is in :days days (:date).',
+    'stay_in_touch_birthday_today' => 'Today is :name\'s birthday! 🎂',
+    'stay_in_touch_snooze_line' => 'Not ready to reach out yet?',
+    'stay_in_touch_snooze_action' => 'Snooze 7 days',
 
     'notifications_whoops' => 'Whoops!',
     'notifications_hello' => 'Hello!',

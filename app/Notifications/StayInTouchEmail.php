@@ -50,14 +50,60 @@ class StayInTouchEmail extends LaravelNotification implements ShouldQueue, MailN
      */
     public function toMail(User $user): MailMessage
     {
-        return (new MailMessage)
+        $message = (new MailMessage)
             ->subject(trans('mail.stay_in_touch_subject_line', ['name' => $this->contact->name]))
             ->greeting(trans('mail.greetings', ['username' => $user->first_name]))
             ->line(trans_choice('mail.stay_in_touch_subject_description', $this->contact->stay_in_touch_frequency, [
                 'name' => $this->contact->name,
                 'frequency' => $this->contact->stay_in_touch_frequency,
-            ]))
-            ->action(trans('mail.footer_contact_info2', ['name' => $this->contact->name]), $this->contact->getLink());
+            ]));
+
+        // Last contacted
+        if ($this->contact->stay_in_touch_last_contacted) {
+            $daysSince = (int) now()->diffInDays($this->contact->stay_in_touch_last_contacted);
+            $message->line(trans('mail.stay_in_touch_last_contacted', [
+                'name' => $this->contact->first_name,
+                'date' => $this->contact->stay_in_touch_last_contacted->format('F j, Y'),
+                'days' => $daysSince,
+            ]));
+        } else {
+            $message->line(trans('mail.stay_in_touch_never_contacted', [
+                'name' => $this->contact->first_name,
+            ]));
+        }
+
+        // Birthday within 30 days
+        if ($this->contact->birthday_special_date_id) {
+            $birthday = $this->contact->birthdate;
+            if ($birthday && $birthday->date) {
+                $birthdayThisYear = $birthday->date->copy()->year(now()->year);
+                if ($birthdayThisYear->isPast() && ! $birthdayThisYear->isToday()) {
+                    $birthdayThisYear->addYear();
+                }
+                $daysUntil = (int) now()->startOfDay()->diffInDays($birthdayThisYear->copy()->startOfDay(), false);
+
+                if ($daysUntil === 0) {
+                    $message->line(trans('mail.stay_in_touch_birthday_today', [
+                        'name' => $this->contact->first_name,
+                    ]));
+                } elseif ($daysUntil > 0 && $daysUntil <= 30) {
+                    $message->line(trans('mail.stay_in_touch_birthday_soon', [
+                        'name' => $this->contact->first_name,
+                        'days' => $daysUntil,
+                        'date' => $birthdayThisYear->format('F j'),
+                    ]));
+                }
+            }
+        }
+
+        $message->action(trans('mail.footer_contact_info2', ['name' => $this->contact->name]), $this->contact->getLink());
+
+        // Snooze link — clicking redirects to the snooze endpoint (requires login)
+        $snoozeUrl = url('/people/' . $this->contact->hashID() . '/stayintouch/snooze');
+        $message->line(trans('mail.stay_in_touch_snooze_line'))
+                ->action(trans('mail.stay_in_touch_snooze_action'), $snoozeUrl);
+
+        return $message;
     }
 
     /**
