@@ -183,6 +183,8 @@ Route::middleware(['auth', 'verified', 'mfa'])->group(function () {
 
         // Stay in touch information
         Route::post('/people/{contact}/stayintouch', 'ContactsController@stayInTouch');
+        Route::post('/people/{contact}/stayintouch/contacted', 'ContactsController@markAsContacted');
+        Route::post('/people/{contact}/stayintouch/snooze', 'ContactsController@snoozeStayInTouch');
 
         // Set favorite
         Route::post('/people/{contact}/favorite', 'ContactsController@favorite');
