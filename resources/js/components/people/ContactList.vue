@@ -417,27 +417,13 @@ export default {
     },
 
     onCellClick(params) {
-      // Handle clicks in checkbox column
-      const clickedElement = params.event.target;
-      const checkboxCell = clickedElement.closest('.vgt-checkbox-col');
+      const checkboxCell = params.event.target.closest('.vgt-checkbox-col');
+      if (!checkboxCell) return;
 
-      if (checkboxCell) {
-        // Prevent default row click behavior
-        params.event.stopPropagation();
+      params.event.stopPropagation();
 
-        // Handle shift-click for range selection
-        if (params.event.shiftKey && params.event.target.type !== 'checkbox') {
-          params.event.preventDefault();
-          this.handleShiftSelect(params.row, params.rowIndex);
-        } else if (params.event.target.type === 'checkbox') {
-          // Regular checkbox click - track last selected index
-          this.lastSelectedIndex = params.rowIndex;
-        }
-        return;
-      }
-
-      // Original logic for other cells
-      if (params.event.shiftKey && params.event.target.type === 'checkbox') {
+      if (params.event.shiftKey) {
+        // vue-good-table already toggled the clicked checkbox; fill in the rest of the range
         this.handleShiftSelect(params.row, params.rowIndex);
       } else if (params.event.target.type === 'checkbox') {
         this.lastSelectedIndex = params.rowIndex;
