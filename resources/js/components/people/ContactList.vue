@@ -420,6 +420,12 @@ export default {
       return this._getBodyRows().indexOf(tr);
     },
 
+    // Returns vue-good-table's internal row objects (have vgtSelected property)
+    _getVgtRows() {
+      const vgt = this.$refs.contactTable;
+      return (vgt && vgt.processedRows && vgt.processedRows[0] && vgt.processedRows[0].children) || null;
+    },
+
     _onTableClickCapture(e) {
       // Only care about clicks inside tbody checkbox cells
       const tr = e.target.closest('tr');
@@ -438,20 +444,24 @@ export default {
         const start = Math.min(this.lastSelectedIndex, clickedIndex);
         const end = Math.max(this.lastSelectedIndex, clickedIndex);
 
-        // Click every unchecked checkbox in the range (these synthetic clicks
-        // have shiftKey=false, so they pass through to vue-good-table normally)
-        for (let i = start; i <= end; i++) {
-          const cb = rows[i] && rows[i].querySelector('.vgt-checkbox-col input[type="checkbox"]');
-          if (cb && !cb.checked) {
-            cb.click();
+        // Directly set vgtSelected on vue-good-table's internal reactive row objects.
+        // This avoids DOM click simulation, which misfires on the shift-clicked row itself.
+        const vgtRows = this._getVgtRows();
+        if (vgtRows) {
+          for (let i = start; i <= end; i++) {
+            if (vgtRows[i] && !vgtRows[i].vgtSelected) {
+              this.$set(vgtRows[i], 'vgtSelected', true);
+            }
           }
+          // vue-good-table doesn't emit on-selected-rows-change from reactive changes,
+          // so update selectedContacts manually.
+          this.selectedContacts = vgtRows.filter(r => r.vgtSelected);
         }
 
         this._clearHoverPreview();
         this.lastSelectedIndex = clickedIndex;
       } else {
-        // Normal click — just update the anchor index after vue-good-table processes it
-        // Use setTimeout so this runs after vue-good-table's handler
+        // Normal click — update anchor after vue-good-table processes it
         setTimeout(() => {
           this.lastSelectedIndex = clickedIndex;
         }, 0);
