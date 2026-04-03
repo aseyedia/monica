@@ -15,6 +15,14 @@
   table.vgt-table .vgt-checkbox-col:hover {
     background-color: rgba(0, 0, 0, 0.02);
   }
+
+  /* Shift-click hover preview range */
+  table.vgt-table tbody tr.shift-preview-range {
+    background-color: #dbeafe !important;
+  }
+  table.vgt-table tbody tr.shift-preview-range td {
+    background-color: #dbeafe !important;
+  }
 </style>
 
 <style lang="scss" scoped>
@@ -186,7 +194,6 @@
       @on-search="onSearch"
       @on-row-click="onRowClick"
       @on-selected-rows-change="onSelectionChanged"
-      @on-cell-click="onCellClick"
     >
       <div slot="emptystate" class="tc">
         {{ $t('people.people_search_no_results') }}
@@ -314,7 +321,9 @@ export default {
       searchEntries: null,
       ready: false,
       selectedContacts: [],
-      lastSelectedIndex: null, // For shift-select functionality
+      lastSelectedIndex: null,
+      shiftHeld: false,
+      hoverIndex: null,
       showBulkEditModal: false,
       isProcessing: false,
       genders: [],
@@ -367,26 +376,119 @@ export default {
 
     this._loadItems();
     this._loadGenders();
+
+    // Capture-phase listener: intercepts shift+clicks on checkboxes BEFORE
+    // vue-good-table processes them, so we get full control over range selection.
+    this.$nextTick(() => {
+      const el = this.$refs.contactTable && this.$refs.contactTable.$el;
+      if (el) {
+        el.addEventListener('click', this._onTableClickCapture, true);
+        el.addEventListener('mouseover', this._onTableMouseover);
+        el.addEventListener('mouseleave', this._onTableMouseleave);
+      }
+    });
+
+    // Track shift key globally for hover preview
+    this._onKeyDown = (e) => { if (e.key === 'Shift') this.shiftHeld = true; };
+    this._onKeyUp = (e) => { if (e.key === 'Shift') { this.shiftHeld = false; this._clearHoverPreview(); } };
+    document.addEventListener('keydown', this._onKeyDown);
+    document.addEventListener('keyup', this._onKeyUp);
+  },
+
+  beforeDestroy() {
+    const el = this.$refs.contactTable && this.$refs.contactTable.$el;
+    if (el) {
+      el.removeEventListener('click', this._onTableClickCapture, true);
+      el.removeEventListener('mouseover', this._onTableMouseover);
+      el.removeEventListener('mouseleave', this._onTableMouseleave);
+    }
+    document.removeEventListener('keydown', this._onKeyDown);
+    document.removeEventListener('keyup', this._onKeyUp);
   },
 
   methods: {
+    // ── Shift-click range selection (capture phase) ──────────────
+    _getBodyRows() {
+      const el = this.$refs.contactTable && this.$refs.contactTable.$el;
+      if (!el) return [];
+      return Array.from(el.querySelectorAll('table.vgt-table tbody tr'));
+    },
+
+    _rowIndexFromEvent(e) {
+      const tr = e.target.closest('tr');
+      if (!tr) return -1;
+      return this._getBodyRows().indexOf(tr);
+    },
+
+    _onTableClickCapture(e) {
+      // Only care about clicks inside tbody checkbox cells
+      const tr = e.target.closest('tr');
+      const isCheckboxCol = e.target.closest('.vgt-checkbox-col') || e.target.type === 'checkbox';
+      if (!tr || !isCheckboxCol) return;
+
+      const rows = this._getBodyRows();
+      const clickedIndex = rows.indexOf(tr);
+      if (clickedIndex < 0) return;
+
+      if (e.shiftKey && this.lastSelectedIndex !== null) {
+        // Prevent vue-good-table from handling this click at all
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const start = Math.min(this.lastSelectedIndex, clickedIndex);
+        const end = Math.max(this.lastSelectedIndex, clickedIndex);
+
+        // Click every unchecked checkbox in the range (these synthetic clicks
+        // have shiftKey=false, so they pass through to vue-good-table normally)
+        for (let i = start; i <= end; i++) {
+          const cb = rows[i] && rows[i].querySelector('.vgt-checkbox-col input[type="checkbox"]');
+          if (cb && !cb.checked) {
+            cb.click();
+          }
+        }
+
+        this._clearHoverPreview();
+        this.lastSelectedIndex = clickedIndex;
+      } else {
+        // Normal click — just update the anchor index after vue-good-table processes it
+        // Use setTimeout so this runs after vue-good-table's handler
+        setTimeout(() => {
+          this.lastSelectedIndex = clickedIndex;
+        }, 0);
+      }
+    },
+
+    // ── Hover preview ────────────────────────────────────────────
+    _onTableMouseover(e) {
+      if (!this.shiftHeld || this.lastSelectedIndex === null) return;
+      const idx = this._rowIndexFromEvent(e);
+      if (idx < 0 || idx === this.hoverIndex) return;
+      this.hoverIndex = idx;
+      this._applyHoverPreview();
+    },
+
+    _onTableMouseleave() {
+      this._clearHoverPreview();
+    },
+
+    _applyHoverPreview() {
+      const rows = this._getBodyRows();
+      const start = Math.min(this.lastSelectedIndex, this.hoverIndex);
+      const end = Math.max(this.lastSelectedIndex, this.hoverIndex);
+      for (let i = 0; i < rows.length; i++) {
+        rows[i].classList.toggle('shift-preview-range', i >= start && i <= end);
+      }
+    },
+
+    _clearHoverPreview() {
+      this.hoverIndex = null;
+      this._getBodyRows().forEach(r => r.classList.remove('shift-preview-range'));
+    },
+
+    // ── Row click (navigation) ───────────────────────────────────
     onRowClick(params) {
-      // Don't navigate when clicking checkbox or checkbox cell
-      if (params.event.target.type === 'checkbox') {
-        return;
-      }
-
-      // Check if click is in the checkbox column (first column with vgt-checkbox-col class)
-      const clickedElement = params.event.target;
-      const checkboxCell = clickedElement.closest('.vgt-checkbox-col');
-
-      if (checkboxCell) {
-        // Click is in checkbox column - toggle selection instead of navigating
-        params.event.preventDefault();
-        params.event.stopPropagation();
-        this.toggleRowSelection(params.row, params.pageIndex, params.event.shiftKey);
-        return;
-      }
+      if (params.event.target.type === 'checkbox') return;
+      if (params.event.target.closest('.vgt-checkbox-col')) return;
 
       params.event.preventDefault();
       if (params.event.ctrlKey) {
@@ -396,69 +498,14 @@ export default {
       window.location.href = params.row.route;
     },
 
-    toggleRowSelection(row, rowIndex, shiftKey) {
-      const checkbox = document.querySelector(`[data-row-index="${rowIndex}"] input[type="checkbox"]`);
-
-      if (checkbox) {
-        // Simulate checkbox click
-        checkbox.click();
-
-        // Handle shift-select
-        if (shiftKey) {
-          this.handleShiftSelect(row, rowIndex);
-        } else {
-          this.lastSelectedIndex = rowIndex;
-        }
-      }
-    },
-
     onSelectionChanged(params) {
       this.selectedContacts = params.selectedRows;
     },
 
-    onCellClick(params) {
-      const checkboxCell = params.event.target.closest('.vgt-checkbox-col');
-      if (!checkboxCell) return;
-
-      params.event.stopPropagation();
-
-      if (params.event.shiftKey) {
-        // vue-good-table already toggled the clicked checkbox; fill in the rest of the range
-        this.handleShiftSelect(params.row, params.rowIndex);
-      } else if (params.event.target.type === 'checkbox') {
-        this.lastSelectedIndex = params.rowIndex;
-      }
-    },
-
-    handleShiftSelect(clickedRow, clickedIndex) {
-      if (this.lastSelectedIndex === null) {
-        this.lastSelectedIndex = clickedIndex;
-        return;
-      }
-
-      const start = Math.min(this.lastSelectedIndex, clickedIndex);
-      const end = Math.max(this.lastSelectedIndex, clickedIndex);
-
-      // Click unchecked checkboxes in the range via the table's own DOM rows
-      const tableRows = this.$refs.contactTable.$el.querySelectorAll('tbody tr');
-      for (let i = start; i <= end; i++) {
-        if (tableRows[i]) {
-          const checkbox = tableRows[i].querySelector('input[type="checkbox"]');
-          if (checkbox && !checkbox.checked) {
-            checkbox.click();
-          }
-        }
-      }
-
-      this.lastSelectedIndex = clickedIndex;
-    },
-
     selectAllOnPage() {
-      // Select all contacts on current page
       if (this.$refs.contactTable && this.$refs.contactTable.selectAllRows) {
         this.$refs.contactTable.selectAllRows();
       } else {
-        // Fallback: manually select all
         this.selectedContacts = [...this.contacts];
       }
     },
@@ -470,7 +517,6 @@ export default {
     clearSelection() {
       this.selectedContacts = [];
       this.lastSelectedIndex = null;
-      // Clear checkboxes in vue-good-table
       if (this.$refs.contactTable && this.$refs.contactTable.unselectAllRows) {
         this.$refs.contactTable.unselectAllRows();
       }
