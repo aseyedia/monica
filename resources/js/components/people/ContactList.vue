@@ -377,14 +377,36 @@ export default {
     this._loadItems();
     this._loadGenders();
 
-    // Capture-phase listener: intercepts shift+clicks on checkboxes BEFORE
-    // vue-good-table processes them, so we get full control over range selection.
+    // Override vue-good-table's onCheckboxClicked to add shift-click range selection.
+    // This is the cleanest approach: we intercept at the method level, so vue-good-table's
+    // own reactivity (`:checked="row.vgtSelected"`) handles all DOM updates for us.
     this.$nextTick(() => {
-      const el = this.$refs.contactTable && this.$refs.contactTable.$el;
-      if (el) {
-        el.addEventListener('click', this._onTableClickCapture, true);
-        el.addEventListener('mouseover', this._onTableMouseover);
-        el.addEventListener('mouseleave', this._onTableMouseleave);
+      const vgt = this.$refs.contactTable;
+      if (vgt) {
+        const originalOnCheckboxClicked = vgt.onCheckboxClicked.bind(vgt);
+        vgt.onCheckboxClicked = (row, index, event) => {
+          if (event.shiftKey && this.lastSelectedIndex !== null) {
+            event.preventDefault();
+            const vgtRows = this._getVgtRows();
+            if (vgtRows) {
+              const start = Math.min(this.lastSelectedIndex, index);
+              const end = Math.max(this.lastSelectedIndex, index);
+              for (let i = start; i <= end; i++) {
+                if (vgtRows[i] && !vgtRows[i].vgtSelected) {
+                  vgt.$set(vgtRows[i], 'vgtSelected', true);
+                }
+              }
+            }
+            this.lastSelectedIndex = index;
+          } else {
+            originalOnCheckboxClicked(row, index, event);
+            this.lastSelectedIndex = index;
+          }
+        };
+
+        // Hover preview listeners
+        vgt.$el.addEventListener('mouseover', this._onTableMouseover);
+        vgt.$el.addEventListener('mouseleave', this._onTableMouseleave);
       }
     });
 
@@ -398,7 +420,6 @@ export default {
   beforeDestroy() {
     const el = this.$refs.contactTable && this.$refs.contactTable.$el;
     if (el) {
-      el.removeEventListener('click', this._onTableClickCapture, true);
       el.removeEventListener('mouseover', this._onTableMouseover);
       el.removeEventListener('mouseleave', this._onTableMouseleave);
     }
@@ -407,7 +428,7 @@ export default {
   },
 
   methods: {
-    // ── Shift-click range selection (capture phase) ──────────────
+    // ── Shift-click range selection helpers ────────────────────────
     _getBodyRows() {
       const el = this.$refs.contactTable && this.$refs.contactTable.$el;
       if (!el) return [];
@@ -424,48 +445,6 @@ export default {
     _getVgtRows() {
       const vgt = this.$refs.contactTable;
       return (vgt && vgt.processedRows && vgt.processedRows[0] && vgt.processedRows[0].children) || null;
-    },
-
-    _onTableClickCapture(e) {
-      // Only care about clicks inside tbody checkbox cells
-      const tr = e.target.closest('tr');
-      const isCheckboxCol = e.target.closest('.vgt-checkbox-col') || e.target.type === 'checkbox';
-      if (!tr || !isCheckboxCol) return;
-
-      const rows = this._getBodyRows();
-      const clickedIndex = rows.indexOf(tr);
-      if (clickedIndex < 0) return;
-
-      if (e.shiftKey && this.lastSelectedIndex !== null) {
-        // Prevent vue-good-table from handling this click at all
-        e.preventDefault();
-        e.stopImmediatePropagation();
-
-        const start = Math.min(this.lastSelectedIndex, clickedIndex);
-        const end = Math.max(this.lastSelectedIndex, clickedIndex);
-
-        // Directly set vgtSelected on vue-good-table's internal reactive row objects.
-        // This avoids DOM click simulation, which misfires on the shift-clicked row itself.
-        const vgtRows = this._getVgtRows();
-        if (vgtRows) {
-          for (let i = start; i <= end; i++) {
-            if (vgtRows[i] && !vgtRows[i].vgtSelected) {
-              this.$set(vgtRows[i], 'vgtSelected', true);
-            }
-          }
-          // vue-good-table doesn't emit on-selected-rows-change from reactive changes,
-          // so update selectedContacts manually.
-          this.selectedContacts = vgtRows.filter(r => r.vgtSelected);
-        }
-
-        this._clearHoverPreview();
-        this.lastSelectedIndex = clickedIndex;
-      } else {
-        // Normal click — update anchor after vue-good-table processes it
-        setTimeout(() => {
-          this.lastSelectedIndex = clickedIndex;
-        }, 0);
-      }
     },
 
     // ── Hover preview ────────────────────────────────────────────
