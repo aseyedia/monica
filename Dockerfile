@@ -2,6 +2,7 @@ FROM monica:4-apache
 
 # Copy customized application files over the official image
 COPY --chown=www-data:www-data app/            /var/www/html/app/
+COPY --chown=www-data:www-data config/         /var/www/html/config/
 COPY --chown=www-data:www-data resources/      /var/www/html/resources/
 COPY --chown=www-data:www-data routes/         /var/www/html/routes/
 COPY --chown=www-data:www-data database/migrations/ /var/www/html/database/migrations/

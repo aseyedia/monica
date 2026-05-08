@@ -11,6 +11,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use App\Channels\NtfyChannel;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification as LaravelNotification;
 
@@ -27,7 +28,27 @@ class UserReminded extends LaravelNotification implements ShouldQueue, MailNotif
 
     public function via()
     {
-        return ['mail'];
+        $channels = ['mail'];
+        if (config('services.ntfy.url')) {
+            $channels[] = NtfyChannel::class;
+        }
+        return $channels;
+    }
+
+    public function toNtfy($notifiable): array
+    {
+        $contact = Contact::where('account_id', $notifiable->account_id)
+            ->findOrFail($this->reminder->contact_id);
+
+        $body = $contact->name;
+        if ($this->reminder->description) {
+            $body .= "\n{$this->reminder->description}";
+        }
+
+        return [
+            'title' => "Monica: {$this->reminder->title}",
+            'body'  => $body,
+        ];
     }
 
     public function toMail(User $user): MailMessage

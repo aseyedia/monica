@@ -244,20 +244,19 @@ class User extends Authenticatable implements MustVerifyEmail, HasLocalePreferen
         }
 
         $now = now($this->timezone);
-        $isTheRightTime = true;
 
-        // compare date with current date for the user
-        if (! $date->isSameDay($now)) {
-            $isTheRightTime = false;
+        // Overdue reminders (past their due date) are sent immediately on the
+        // next scheduled run, without waiting for the configured hour.
+        if ($date->startOfDay()->lt($now->copy()->startOfDay())) {
+            return true;
         }
 
-        // compare current hour for the user with the hour they want to be
-        // reminded as per the hour set on the profile
-        if (! $now->isSameHour($this->account->default_time_reminder_is_sent)) {
-            $isTheRightTime = false;
+        // Due today: only send at the configured hour.
+        if ($date->isSameDay($now)) {
+            return $now->isSameHour($this->account->default_time_reminder_is_sent);
         }
 
-        return $isTheRightTime;
+        return false;
     }
 
     /**

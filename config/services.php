@@ -40,4 +40,10 @@ return [
         ],
     ],
 
+    'ntfy' => [
+        'url'   => env('NTFY_URL'),
+        'topic' => env('NTFY_TOPIC'),
+        'token' => env('NTFY_TOKEN'),
+    ],
+
 ];
