@@ -30,9 +30,12 @@ class CalDAVReminders extends AbstractCalDAVBackend
 
     public function getObjects($collectionId)
     {
+        // Exclude birthday reminders at the DB level (contacts.birthday_reminder_id = reminders.id)
+        // plus a PHP-level belt-and-suspenders check via isBirthdayReminder()
         return $this->user->account
             ->reminders()
             ->active()
+            ->whereDoesntHave('contact', fn ($q) => $q->whereColumn('contacts.birthday_reminder_id', 'reminders.id'))
             ->with('contact')
             ->get()
             ->reject(fn ($r) => $r->isBirthdayReminder());

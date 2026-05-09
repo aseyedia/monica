@@ -19,7 +19,6 @@ class CalDAVBackend extends AbstractBackend implements SyncSupport
     private function getBackends(): array
     {
         return [
-            app(CalDAVBirthdays::class)->init($this->user),
             app(CalDAVTasks::class)->init($this->user),
             app(CalDAVReminders::class)->init($this->user),
         ];
