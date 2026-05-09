@@ -14,7 +14,17 @@
 
 
 CardDAV is a protocol based on WebDAV, allowing you to **synchronize your contacts** between multiple devices (mobile phone, mail software, etc.).
-CalDAV is pretty much the same, with Calendars. In Monica it allows you to synchronize the birthdays anniversary of your contacts, and the task list (which uses the same CalDAV protocol).
+CalDAV is pretty much the same, with Calendars. In Monica it allows you to synchronize the birthdays anniversary of your contacts, the task list, and reminders (which all use the same CalDAV protocol).
+
+### What syncs where
+
+| Monica data | CalDAV type | Appears in |
+|---|---|---|
+| Contact birthdays | VEVENT (yearly recurring) | Calendar app |
+| Tasks | VTODO | Reminders app |
+| Reminders (non-birthday) | VTODO with due date | Reminders app |
+
+Reminders are exported **read-only** — they are managed in Monica and fire via email/push; marking them in a CalDAV client has no effect on Monica's scheduler.
 
 CardDAV and CalDAV for Monica are implemented with [sabre/dav](https://sabre.io/) library.
 
@@ -71,10 +81,28 @@ To add an account:
 After that, you can use any Contacts application on your phone. Be sure to display your Monica account on the list of contacts, and to use it by default for new contacts.
 
 
-### iPhone
+### iPhone / Apple iOS
 
+iOS supports CalDAV natively for both Calendar and Reminders.
 
-### Apple iOS
+**Add the account:**
+- Open **Settings → Calendar → Accounts → Add Account → Other → Add CalDAV Account**
+- Enter the following:
+  - **Server**: your Monica hostname (e.g. `people.artaseyedian.com`)
+  - **Username**: your email login
+  - **Password**: the API token from Settings → API
+  - **Description**: Monica (or anything you like)
+- Tap **Next** — iOS will discover all calendars automatically
+
+**What appears where after setup:**
+- **Calendar app**: shows a "Birthdays" calendar with contact birthdays as yearly events
+- **Reminders app**: shows a "Tasks" list (your Monica tasks) and a "Reminders" list (your Monica reminders with due dates)
+
+**Troubleshooting "Cannot Connect Using SSL":**
+If your Monica instance is behind a reverse proxy (nginx + Cloudflare Tunnel), ensure:
+1. `APP_TRUSTED_PROXIES=*` is set in the Monica container environment — without it Monica generates `http://` redirect URLs which iOS refuses to follow as a security downgrade
+2. `proxy_redirect http://yourdomain https://yourdomain;` is set in your nginx block
+3. The `/.well-known/caldav` nginx location returns an `https://` redirect directly
 
 
 ### Thunderbird
