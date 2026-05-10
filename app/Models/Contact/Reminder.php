@@ -40,6 +40,7 @@ class Reminder extends Model
         'delible' => 'boolean',
         'inactive' => 'boolean',
         'initial_date' => 'date:Y-m-d',
+        'pending_complete_at' => 'datetime',
     ];
 
     /**

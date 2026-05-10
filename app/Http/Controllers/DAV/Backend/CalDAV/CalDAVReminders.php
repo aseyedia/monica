@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\DAV\Backend\CalDAV;
 
-use App\Helpers\DateHelper;
 use App\Models\Contact\Reminder;
 use App\Services\VCalendar\ExportReminder;
 use Illuminate\Support\Facades\Log;
@@ -95,11 +94,11 @@ class CalDAVReminders extends AbstractCalDAVBackend
     }
 
     /**
-     * Handle iOS checking off a reminder.
+     * Handle iOS checking/unchecking a reminder.
      *
-     * STATUS:COMPLETED on a one_time reminder marks it inactive (done forever).
-     * STATUS:COMPLETED on a recurring reminder advances it by one cycle so it
-     * reappears in iOS with the next due date. Un-checking (NEEDS-ACTION) is ignored.
+     * COMPLETED → starts 60s grace period; reminder:process-completions commits it.
+     * NEEDS-ACTION within grace period → cancels the pending completion.
+     * Any other status → no-op.
      */
     public function updateOrCreateCalendarObject($calendarId, $objectUri, $calendarData): ?string
     {
@@ -107,7 +106,7 @@ class CalDAVReminders extends AbstractCalDAVBackend
             $vObject = Reader::read($calendarData);
             $vtodo = $vObject->VTODO;
 
-            if (! $vtodo || (string) $vtodo->STATUS !== 'COMPLETED') {
+            if (! $vtodo) {
                 return null;
             }
 
@@ -120,31 +119,18 @@ class CalDAVReminders extends AbstractCalDAVBackend
                 return null;
             }
 
-            if ($reminder->frequency_type === 'one_time') {
-                $reminder->update(['inactive' => true]);
-                $reminder->reminderOutboxes()->delete();
+            $status = (string) $vtodo->STATUS;
 
-                return null;
+            if ($status === 'COMPLETED') {
+                $reminder->update(['pending_complete_at' => now()]);
+            } elseif ($status === 'NEEDS-ACTION' && $reminder->pending_complete_at !== null) {
+                $reminder->update(['pending_complete_at' => null]);
             }
-
-            // Recurring: advance initial_date by one cycle past current due date
-            $currentDue = $reminder->calculateNextExpectedDateOnTimezone();
-            $nextDue = DateHelper::addTimeAccordingToFrequencyType(
-                $currentDue->copy(),
-                $reminder->frequency_type,
-                $reminder->frequency_number
-            );
-            $reminder->update(['initial_date' => $nextDue->toDateString()]);
-            $reminder->fresh()->schedule($this->user);
-
-            $data = $this->prepareData($reminder->fresh());
-
-            return $data['etag'] ?? null;
         } catch (\Exception $e) {
             Log::error(__CLASS__.' '.__FUNCTION__.': '.$e->getMessage(), [$e]);
-
-            return null;
         }
+
+        return null;
     }
 
     public function deleteCalendarObject($objectUri)

@@ -58,6 +58,19 @@ class CronEvent
     }
 
     /**
+     * Run the command every minute.
+     *
+     * @return self
+     */
+    public function everyMinute(): self
+    {
+        $this->minutes = 1;
+        $this->days = 0;
+
+        return $this;
+    }
+
+    /**
      * Run the command once per hour.
      *
      * @return self
