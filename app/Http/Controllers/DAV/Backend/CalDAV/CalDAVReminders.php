@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\DAV\Backend\CalDAV;
 
+use App\Helpers\DateHelper;
 use App\Models\Contact\Reminder;
 use App\Services\VCalendar\ExportReminder;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
+use Sabre\VObject\Reader;
 
 class CalDAVReminders extends AbstractCalDAVBackend
 {
@@ -92,10 +94,57 @@ class CalDAVReminders extends AbstractCalDAVBackend
         return $vcal->serialize();
     }
 
-    // Read-only — reminders are managed in Monica, not via CalDAV clients
+    /**
+     * Handle iOS checking off a reminder.
+     *
+     * STATUS:COMPLETED on a one_time reminder marks it inactive (done forever).
+     * STATUS:COMPLETED on a recurring reminder advances it by one cycle so it
+     * reappears in iOS with the next due date. Un-checking (NEEDS-ACTION) is ignored.
+     */
     public function updateOrCreateCalendarObject($calendarId, $objectUri, $calendarData): ?string
     {
-        return null;
+        try {
+            $vObject = Reader::read($calendarData);
+            $vtodo = $vObject->VTODO;
+
+            if (! $vtodo || (string) $vtodo->STATUS !== 'COMPLETED') {
+                return null;
+            }
+
+            $reminder = Reminder::where([
+                'account_id' => $this->user->account_id,
+                'uuid' => (string) $vtodo->UID,
+            ])->first();
+
+            if (! $reminder || $reminder->inactive) {
+                return null;
+            }
+
+            if ($reminder->frequency_type === 'one_time') {
+                $reminder->update(['inactive' => true]);
+                $reminder->reminderOutboxes()->delete();
+
+                return null;
+            }
+
+            // Recurring: advance initial_date by one cycle past current due date
+            $currentDue = $reminder->calculateNextExpectedDateOnTimezone();
+            $nextDue = DateHelper::addTimeAccordingToFrequencyType(
+                $currentDue->copy(),
+                $reminder->frequency_type,
+                $reminder->frequency_number
+            );
+            $reminder->update(['initial_date' => $nextDue->toDateString()]);
+            $reminder->fresh()->schedule($this->user);
+
+            $data = $this->prepareData($reminder->fresh());
+
+            return $data['etag'] ?? null;
+        } catch (\Exception $e) {
+            Log::error(__CLASS__.' '.__FUNCTION__.': '.$e->getMessage(), [$e]);
+
+            return null;
+        }
     }
 
     public function deleteCalendarObject($objectUri)
