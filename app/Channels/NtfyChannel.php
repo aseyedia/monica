@@ -25,7 +25,7 @@ class NtfyChannel
             $request = $request->withToken($token);
         }
 
-        $response = $request->post("{$url}/{$topic}", $body);
+        $response = $request->withBody($body, 'text/plain')->post("{$url}/{$topic}");
 
         if (! $response->successful()) {
             Log::error('ntfy notification failed', ['status' => $response->status(), 'body' => $response->body()]);

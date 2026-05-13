@@ -7,6 +7,9 @@ COPY --chown=www-data:www-data resources/      /var/www/html/resources/
 COPY --chown=www-data:www-data routes/         /var/www/html/routes/
 COPY --chown=www-data:www-data database/migrations/ /var/www/html/database/migrations/
 
+COPY --chown=www-data:www-data public/css/          /var/www/html/public/css/
+COPY --chown=www-data:www-data public/SF-Mono-Nerd-Font/ /var/www/html/public/SF-Mono-Nerd-Font/
+
 # Pre-built JS assets (run `yarn prod` locally or in CI before building this image)
 # We rebuild inside the container so the official PHP/Node env is used.
 COPY package.json yarn.lock webpack.mix.js /var/www/html/

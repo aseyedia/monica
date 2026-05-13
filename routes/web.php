@@ -28,6 +28,12 @@ Route::permanentRedirect('/.well-known/security.txt', '/security.txt');
 Route::get('/invitations/accept/{key}', 'Auth\InvitationController@show')->name('invitations.accept');
 Route::post('/invitations/accept/{key}', 'Auth\InvitationController@store')->name('invitations.send');
 
+// Public contact intake form
+Route::get('/cnct', 'ContactIntakeController@show')->name('intake.show');
+Route::post('/cnct', 'ContactIntakeController@submit')->name('intake.submit')->middleware('throttle:intake');
+Route::post('/cnct/parse-vcf', 'ContactIntakeController@parseVCard')->name('intake.parse-vcf')->middleware('throttle:intake');
+Route::get('/cnct/thanks', 'ContactIntakeController@thanks')->name('intake.thanks');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/logout', 'Auth\LoginController@logout');
     Route::get('/auth/login-recovery', 'Auth\RecoveryLoginController@get')->name('recovery.login');
@@ -293,6 +299,12 @@ Route::middleware(['auth', 'verified', 'mfa'])->group(function () {
         });
 
         Route::get('/settings/auditlogs', 'Settings\\AuditLogController@index')->name('auditlog.index');
+
+        Route::name('intake.')->prefix('settings/intake')->group(function () {
+            Route::get('/', 'Settings\\IntakeController@index')->name('index');
+            Route::post('{submission}/approve', 'Settings\\IntakeController@approve')->name('approve');
+            Route::post('{submission}/reject', 'Settings\\IntakeController@reject')->name('reject');
+        });
 
         Route::name('tags.')->group(function () {
             Route::get('/settings/tags', 'SettingsController@tags')->name('index');
