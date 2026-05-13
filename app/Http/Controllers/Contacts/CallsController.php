@@ -64,6 +64,7 @@ class CallsController extends Controller
             'content' => $request->input('content'),
             'called_at' => $request->input('called_at'),
             'contact_called' => $request->input('contact_called'),
+            'is_text' => $request->boolean('is_text', false),
             'emotions' => $request->input('emotions'),
         ]);
     }
@@ -83,6 +84,7 @@ class CallsController extends Controller
             'content' => $request->input('content'),
             'called_at' => $request->input('called_at'),
             'contact_called' => $request->input('contact_called'),
+            'is_text' => $request->boolean('is_text', false),
             'emotions' => $request->input('emotions'),
         ]);
     }

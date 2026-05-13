@@ -21,6 +21,7 @@ class UpdateCall extends BaseService
             'called_at' => 'required|date',
             'content' => 'nullable|string',
             'contact_called' => 'nullable|boolean',
+            'is_text' => 'nullable|boolean',
             'emotions' => 'nullable|array',
         ];
     }
@@ -45,6 +46,7 @@ class UpdateCall extends BaseService
             'called_at' => $data['called_at'],
             'content' => (empty($data['content']) ? null : $data['content']),
             'contact_called' => (empty($data['contact_called']) ? null : $data['contact_called']),
+            'is_text' => $data['is_text'] ?? false,
         ]);
 
         // emotions array is left out as they are not attached during this call

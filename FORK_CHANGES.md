@@ -114,6 +114,37 @@ environment:
 
 ---
 
+## 7. Text Exchange Logging
+
+Extends the "Phone calls" feature to also log SMS/text exchanges. Previously the calls section only modeled voice calls.
+
+**Modified files:**
+- `database/migrations/2026_05_12_000000_add_is_text_to_calls.php` — adds `is_text` boolean column (default `false`) to `calls` table
+- `app/Models/Contact/Call.php` — added `is_text` to `$casts`
+- `app/Services/Contact/Call/CreateCall.php` — added `is_text` to validation rules
+- `app/Services/Contact/Call/UpdateCall.php` — added `is_text` to validation rules and `update()` call
+- `app/Http/Controllers/Contacts/CallsController.php` — passes `is_text` from request in both `store` and `update`
+- `app/Http/Resources/Call/Call.php` — added `is_text` to JSON output
+- `resources/js/components/people/calls/PhoneCallList.vue` — type toggle (☎️ Phone call / 💬 Text exchange); labels update dynamically ("Who called?" ↔ "Who texted first?", date label, emotion label); list entries show ☎️ or 💬 icon with correct verb
+- `resources/lang/en/people.php` — section renamed "Calls & texts"; button renamed "Log call or text"; strings updated throughout
+
+**Behavior:**
+- Existing calls all default to `is_text = false` — no data loss
+- Type toggle appears at the top of the log form; selecting "Text exchange" updates all labels in the form and the list display
+- The `is_text` field is exposed in the API JSON for MCP consumers
+
+---
+
+## 8. Mobile Refresh Button
+
+Monica is used as a PWA (added to iOS home screen). Safari's native pull-to-refresh and browser controls are hidden in standalone mode, leaving no way to refresh.
+
+**Modified:** `resources/views/layouts/skeleton.blade.php`
+
+Adds a fixed purple circle button (↻) pinned to bottom-right, visible only on screens ≤768px via CSS media query. Calls `location.reload()` on tap. Hidden on desktop.
+
+---
+
 ## Deployment
 
 ```bash

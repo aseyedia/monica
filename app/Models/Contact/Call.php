@@ -37,6 +37,7 @@ class Call extends Model
      */
     protected $casts = [
         'contact_called' => 'boolean',
+        'is_text' => 'boolean',
     ];
 
     /**

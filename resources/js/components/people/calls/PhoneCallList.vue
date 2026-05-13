@@ -28,50 +28,48 @@
     <!-- LOG A CALL -->
     <transition name="fade">
       <div v-if="displayLogCall" v-cy-name="'log-call-form'" class="ba br3 mb3 pa3 b--black-40">
-        <div class="dt dt--fixed pb3 mb3 mb0-ns">
-          <!-- WHEN -->
-          <div class="dtc pr2">
-            <p class="mb2 b">
-              {{ $t('people.modal_call_exact_date') }}
-            </p>
-            <div class="di mr3">
-              <div class="dib">
-                <form-date
-                  v-model="newCall.called_at"
-                  :default-date="todayDate"
-                  :locale="locale"
-                />
-              </div>
-            </div>
-          </div>
 
-          <!-- WHO CALLED -->
-          <div class="dtc">
-            <p class="mb2 b">
-              {{ $t('people.modal_call_who_called') }}
-            </p>
-            <div class="dt">
-              <div class="dt-row">
-                <form-radio
-                  v-model="newCall.contact_called"
-                  :name="'contact_called'"
-                  :value="false"
-                  :iclass="'mr1'"
-                  :dclass="'dtc mr3'"
-                >
-                  {{ $t('people.call_you_called') }}
-                </form-radio>
-                <form-radio
-                  v-model="newCall.contact_called"
-                  :name="'contact_called'"
-                  :value="true"
-                  :iclass="'mr1'"
-                  :dclass="'dtc mr3'"
-                >
-                  {{ $t('people.call_he_called', { name : name }) }}
-                </form-radio>
-              </div>
-            </div>
+        <!-- TYPE TOGGLE -->
+        <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #ddd;">
+          <p style="font-weight: bold; margin-bottom: 12px;">Type</p>
+          <div style="display: flex; gap: 24px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 15px;">
+              <input v-model="newCall.is_text" type="radio" :value="false" style="width: 18px; height: 18px;" />
+              ☎️ Phone call
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 15px;">
+              <input v-model="newCall.is_text" type="radio" :value="true" style="width: 18px; height: 18px;" />
+              💬 Text exchange
+            </label>
+          </div>
+        </div>
+
+        <!-- WHEN -->
+        <div style="margin-bottom: 20px;">
+          <p style="font-weight: bold; margin-bottom: 10px;">
+            {{ newCall.is_text ? $t('people.modal_call_text_date') : $t('people.modal_call_exact_date') }}
+          </p>
+          <form-date
+            v-model="newCall.called_at"
+            :default-date="todayDate"
+            :locale="locale"
+          />
+        </div>
+
+        <!-- WHO INITIATED -->
+        <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #ddd;">
+          <p style="font-weight: bold; margin-bottom: 12px;">
+            {{ newCall.is_text ? 'Who texted first?' : $t('people.modal_call_who_called') }}
+          </p>
+          <div style="display: flex; gap: 24px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 15px;">
+              <input v-model="newCall.contact_called" type="radio" :value="false" style="width: 18px; height: 18px;" />
+              {{ newCall.is_text ? 'You texted' : $t('people.call_you_called') }}
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 15px;">
+              <input v-model="newCall.contact_called" type="radio" :value="true" style="width: 18px; height: 18px;" />
+              {{ newCall.is_text ? name + ' texted' : $t('people.call_he_called', { name: name }) }}
+            </label>
           </div>
         </div>
 
@@ -94,7 +92,7 @@
         <!-- EMOTIONS -->
         <div class="bb b--gray-monica pb3">
           <label class="b">
-            {{ $t('people.modal_call_emotion') }}
+            {{ newCall.is_text ? 'How did this text exchange make you feel? (optional)' : $t('people.modal_call_emotion') }}
           </label>
           <emotion class="pv2" @update="updateEmotionsList" />
         </div>
@@ -212,7 +210,10 @@
               {{ call.called_at | moment }}
             </span>
             <span :class="[ dirltr ? 'mr3' : 'ml3' ]">
-              {{ call.contact_called ? $t('people.call_he_called', { name : name }) : $t('people.call_you_called') }}
+              {{ call.is_text ? '💬' : '☎️' }}
+              {{ call.is_text
+                ? (call.contact_called ? name + ' texted' : 'You texted')
+                : (call.contact_called ? $t('people.call_he_called', { name : name }) : $t('people.call_you_called')) }}
             </span>
 
             <!-- EMOTION LIST -->
@@ -292,11 +293,13 @@ export default {
         content: '',
         called_at: '',
         contact_called: false,
+        is_text: false,
         emotions: [],
       },
       editCall: {
         content: '',
         contact_called: false,
+        is_text: false,
         emotions: [],
       }
     };
@@ -381,6 +384,7 @@ export default {
       this.editCallId = call.id;
       this.editCall.content = call.content;
       this.editCall.contact_called = call.contact_called;
+      this.editCall.is_text = call.is_text;
       this.editCall.called_at = moment.utc(call.called_at).format('YYYY-MM-DD');
     },
 

@@ -27,6 +27,7 @@ class Call extends JsonResource
             'called_at' => DateHelper::getTimestamp($this->called_at),
             'content' => $this->content,
             'contact_called' => $this->contact_called,
+            'is_text' => (bool) $this->is_text,
             'emotions' => EmotionResource::collection($this->emotions),
             'url' => route('api.call', $this->id),
             'account' => [

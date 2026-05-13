@@ -68,5 +68,37 @@
 
     @stack('scripts')
 
+    {{-- Mobile refresh button: visible only on small screens in standalone PWA mode --}}
+    <style>
+      @media (max-width: 768px) {
+        #mobile-refresh-btn {
+          display: flex;
+          position: fixed;
+          bottom: 24px;
+          right: 20px;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: #6c63ff;
+          color: #fff;
+          border: none;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          cursor: pointer;
+          z-index: 9999;
+          -webkit-tap-highlight-color: transparent;
+        }
+        #mobile-refresh-btn:active {
+          transform: scale(0.92);
+        }
+      }
+      @media (min-width: 769px) {
+        #mobile-refresh-btn { display: none !important; }
+      }
+    </style>
+    <button id="mobile-refresh-btn" onclick="location.reload()" title="Refresh">↻</button>
+
   </body>
 </html>
