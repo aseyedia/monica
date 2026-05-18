@@ -229,6 +229,24 @@ $factory->define(App\Models\Contact\PetCategory::class, function (Faker\Generato
     return [];
 });
 
+$factory->define(App\Models\Contact\StayInTouchOverdueOutbox::class, function (Faker\Generator $faker) {
+    return [
+        'account_id' => factory(App\Models\Account\Account::class)->create()->id,
+        'contact_id' => function (array $data) {
+            return factory(App\Models\Contact\Contact::class)->create([
+                'account_id' => $data['account_id'],
+            ])->id;
+        },
+        'user_id' => function (array $data) {
+            return factory(App\Models\User\User::class)->create([
+                'account_id' => $data['account_id'],
+            ])->id;
+        },
+        'planned_date' => now()->toDateString(),
+        'days_overdue' => 3,
+    ];
+});
+
 $factory->define(App\Models\Contact\ReminderRule::class, function (Faker\Generator $faker) {
     return [
         'account_id' => factory(App\Models\Account\Account::class)->create()->id,

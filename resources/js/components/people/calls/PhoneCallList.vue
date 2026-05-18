@@ -142,20 +142,6 @@
 
           <!-- WHO CALLED -->
           <div class="pb3 mb3 mb0-ns">
-            <p class="mb2">
-              {{ $t('people.modal_call_who_called') }}
-            </p>
-            <div class="di mr3">
-              <input :id="'you' + call.id" v-model="editCall.contact_called" type="radio" class="mr1" :name="'contact_called' + call.id"
-                     :value="false"
-              />
-              <p class="f6">
-                {{ $t('app.markdown_description') }}
-              </p>
-            </div>
-
-            <!-- WHO CALLED -->
-            <div class="pb3 mb3 mb0-ns">
               <p class="mb2">
                 {{ $t('people.modal_call_who_called') }}
               </p>
@@ -200,7 +186,6 @@
                 </div>
               </div>
             </div>
-          </div>
         </div>
 
         <!-- ADDITIONAL INFORMATION -->

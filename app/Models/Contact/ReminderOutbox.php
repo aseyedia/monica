@@ -15,9 +15,10 @@ use App\Models\ModelBindingHasherWithContact as Model;
  * @property int $user_id
  * @property Reminder|null $reminder
  * @property int $reminder_id
- * @property string $nature
+ * @property string $nature  reminder|notification|overdue
  * @property \Illuminate\Support\Carbon|null $planned_date
  * @property int $notification_number_days_before
+ * @property int|null $overdue_days_past  3, 7, 14, or 30 for overdue entries
  */
 class ReminderOutbox extends Model
 {

@@ -145,6 +145,53 @@ Adds a fixed purple circle button (↻) pinned to bottom-right, visible only on 
 
 ---
 
+## 9. Overdue Reminder Notifications
+
+Monica fires reminders and stay-in-touch notifications once. If you miss the email or don't act on it, nothing happens. This feature adds escalating follow-up notifications at **+3, +7, +14, and +30 days** after a reminder fires without being acknowledged.
+
+### Part A: Stay-in-Touch Overdue
+
+**Problem:** After a stay-in-touch trigger date fires, the `ScheduleStayInTouch` job advances the next trigger date and sends the email — but if you miss it, the cycle just silently resets. No follow-up.
+
+**Solution:** After sending a stay-in-touch notification, four overdue outbox entries are queued in a new `stay_in_touch_overdue_outbox` table. A new daily command processes them: if the contact hasn't been logged since the original notification fired, it sends an escalating email and ntfy push. When you log a call/activity with the contact (`markAsContacted()`), all pending overdue entries for them are cleared.
+
+**New files:**
+- `database/migrations/2026_05_13_000000_create_stay_in_touch_overdue_outbox.php` — table with `account_id`, `contact_id`, `user_id`, `planned_date`, `days_overdue`, cascade-deletes on contact/user/account removal
+- `app/Models/Contact/StayInTouchOverdueOutbox.php` — Eloquent model; `$intervals = [3, 7, 14, 30]`
+- `app/Notifications/OverdueStayInTouchEmail.php` — mail + ntfy notification; subject "Overdue: stay in touch with {name}"; body includes days overdue, last contacted date, link to contact profile
+- `app/Console/Commands/SendOverdueStayInTouch.php` — daily command; grabs rows with `planned_date <= now()+2d`; skips if contact was reached after the overdue was scheduled; respects `isTheRightTimeToBeReminded` (row stays for next run if wrong hour — fires next day at latest since past dates always pass the check)
+- `resources/views/emails/overdue-stay-in-touch.blade.php` — email template
+
+**Modified files:**
+- `app/Jobs/StayInTouch/ScheduleStayInTouch.php` — after sending, clears existing overdue entries for the contact and creates 4 new ones; skips past intervals if scheduler was backlogged
+- `app/Models/Contact/Contact.php` — `markAsContacted()` now deletes `StayInTouchOverdueOutbox` rows for the contact
+- `app/Console/Kernel.php` — registered `send:overdue_stay_in_touch` as a daily command
+
+### Part B: Overdue Regular Reminders
+
+**Problem:** One-time reminders fire once and go inactive. If you miss the email, there's no follow-up.
+
+**Solution:** When a `one_time` reminder fires (not pre-due notification, not recurring), four `overdue` entries are added to the existing `reminder_outbox` table. The existing `send:reminders` hourly command picks these up and sends a `UserOverdue` notification. If the reminder was cleared via CalDAV before the overdue fires, it's skipped.
+
+**New files:**
+- `database/migrations/2026_05_13_000001_add_overdue_to_reminder_outbox.php` — adds `overdue_days_past` nullable tinyint column
+- `app/Notifications/UserOverdue.php` — mail + ntfy notification; subject "Overdue reminder: {title} — {contact}"; reuses `emails.reminder` template with overdue context ("This reminder was due N days ago and hasn't been cleared")
+
+**Modified files:**
+- `app/Jobs/Reminder/NotifyUserAboutReminder.php` — `scheduleNextReminder()` calls new `scheduleOverdue()` for `one_time` reminders on the initial `reminder` nature fire; `getMessage()` handles new `overdue` nature, returns `null` if reminder is already inactive (cleared via CalDAV)
+- `app/Models/Contact/ReminderOutbox.php` — added `overdue_days_past` to docblock
+- `resources/views/emails/reminder.blade.php` — added `isOverdue`/`daysPast` branch to intro copy
+
+**Note:** Overdue regular reminder entries self-consume (all four intervals fire regardless — there's no explicit "acknowledge" UI for regular reminders). Clearing via the iOS Reminders app CalDAV integration suppresses remaining overdue entries by marking the reminder inactive.
+
+### Tests
+
+- `tests/Unit/Jobs/ScheduleStayInTouchOverdueTest.php` — 4 cases: entries created after send, not created when no notification sent, stale entries replaced on re-trigger, cleared when contact is marked as contacted
+- `tests/Commands/Scheduling/SendOverdueStayInTouchTest.php` — 3 cases: sends when contact not reached, skips when contact reached after schedule, leaves future rows alone
+- `tests/Unit/Jobs/Reminder/NotifyUserAboutReminderOverdueTest.php` — 5 cases: overdue entries created for one-time, not for recurring, overdue notification sent for active reminder, skipped when reminder cleared via CalDAV, not created for pre-due notification nature
+
+---
+
 ## Deployment
 
 ```bash

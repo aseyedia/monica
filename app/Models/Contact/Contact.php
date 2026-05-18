@@ -31,6 +31,7 @@ use App\Models\ModelBindingHasher as Model;
 use LaravelAdorable\Facades\LaravelAdorable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Validation\ValidationException;
+use App\Models\Contact\StayInTouchOverdueOutbox;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -1553,6 +1554,8 @@ class Contact extends Model
         $this->stay_in_touch_last_contacted = now();
         $this->save();
         $this->timestamps = $timestamps;
+
+        StayInTouchOverdueOutbox::where('contact_id', $this->id)->delete();
 
         if ($this->stay_in_touch_frequency) {
             $this->setStayInTouchTriggerDate($this->stay_in_touch_frequency);

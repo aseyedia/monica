@@ -46,6 +46,7 @@ class Kernel extends ConsoleKernel
         $this->scheduleCommand($schedule, 'queue:prune-batches', 'daily');
         $this->scheduleCommand($schedule, 'send:reminders', 'hourly');
         $this->scheduleCommand($schedule, 'send:stay_in_touch', 'hourly');
+        $this->scheduleCommand($schedule, 'send:overdue_stay_in_touch', 'daily');
         $this->scheduleCommand($schedule, 'monica:davclients', 'hourly');
         $this->scheduleCommand($schedule, 'monica:calculatestatistics', 'daily');
         $this->scheduleCommand($schedule, 'monica:ping', 'daily');
