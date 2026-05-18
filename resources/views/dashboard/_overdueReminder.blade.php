@@ -29,11 +29,13 @@
                onmouseout="this.style.borderColor='#ccc';this.style.color='#aaa'">✓</button>
           </form>
           {{-- date block --}}
-          <div style="flex-shrink:0;width:72px">
+          <div style="flex-shrink:0;width:76px">
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:1px">due</div>
             <div class="ttu f6 red fw5">{{ \App\Helpers\DateHelper::getShortDateWithoutYear($dueDate) }}</div>
-            <div class="ttu f7 gray" style="font-size:9px;letter-spacing:.5px;margin-top:1px">
-              ↻ {{ \App\Helpers\DateHelper::getShortDateWithoutYear($followUp) }}
-            </div>
+            @if($dueDays > 0)
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-top:4px;margin-bottom:1px">resend</div>
+            <div class="ttu gray" style="font-size:10px;">{{ \App\Helpers\DateHelper::getShortDateWithoutYear($followUp) }}</div>
+            @endif
           </div>
           {{-- contact + title --}}
           <div>

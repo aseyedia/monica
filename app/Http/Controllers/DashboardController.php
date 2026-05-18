@@ -6,6 +6,7 @@ use App\Helpers\DateHelper;
 use App\Models\Contact\Debt;
 use App\Models\Contact\Reminder;
 use App\Models\Contact\ReminderOutbox;
+use App\Services\Instance\IdHasher;
 use Illuminate\Http\Request;
 use App\Helpers\AccountHelper;
 use function Safe\json_encode;
@@ -192,10 +193,12 @@ class DashboardController extends Controller
     /**
      * Dismiss all overdue outbox entries for a reminder and mark it inactive.
      */
-    public function dismissOverdue(Reminder $reminder)
+    public function dismissOverdue(string $reminderId)
     {
-        // Ensure reminder belongs to this account
-        abort_unless($reminder->account_id === auth()->user()->account_id, 403);
+        $id = app(IdHasher::class)->decodeId($reminderId);
+        $reminder = Reminder::where('account_id', auth()->user()->account_id)
+            ->where('id', $id)
+            ->firstOrFail();
 
         // Delete all overdue follow-up entries for this reminder
         ReminderOutbox::where('reminder_id', $reminder->id)
