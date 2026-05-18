@@ -50,71 +50,57 @@
 </div>
 
 <script>
-(function () {
-  var totalCount = {{ $overdueReminders->count() }};
+document.addEventListener('submit', function (e) {
+  var form = e.target;
+  if (!form.classList.contains('overdue-dismiss-form')) return;
+  e.preventDefault();
 
-  document.querySelectorAll('.overdue-dismiss-form').forEach(function (form) {
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var li = form.closest('li.overdue-item');
-      var cancelled = false;
-      var timer;
+  var li = form.closest('li');
+  if (!li) return;
 
-      // Dim the row
-      li.style.opacity = '0.35';
-      li.style.pointerEvents = 'none';
+  var cancelled = false;
+  var timer;
 
-      // Undo link
-      var undoSpan = document.createElement('span');
-      undoSpan.textContent = 'undo';
-      undoSpan.style.cssText = 'cursor:pointer;color:#0077cc;font-size:11px;margin-left:6px;pointer-events:auto;';
-      undoSpan.addEventListener('click', function () {
-        cancelled = true;
-        clearTimeout(timer);
+  li.style.opacity = '0.4';
+  li.style.pointerEvents = 'none';
+
+  var undoSpan = document.createElement('span');
+  undoSpan.textContent = ' undo';
+  undoSpan.style.cssText = 'cursor:pointer;color:#0077cc;font-size:11px;pointer-events:auto;';
+  undoSpan.addEventListener('click', function () {
+    cancelled = true;
+    clearTimeout(timer);
+    li.style.opacity = '';
+    li.style.pointerEvents = '';
+    undoSpan.remove();
+  });
+  li.appendChild(undoSpan);
+
+  timer = setTimeout(function () {
+    if (cancelled) return;
+    fetch(form.action, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': form.querySelector('[name=_token]').value,
+        'Accept': 'application/json'
+      },
+      body: new FormData(form)
+    }).then(function (r) {
+      if (r.ok) {
+        li.remove();
+        var card = document.getElementById('overdue-card');
+        if (card && card.querySelectorAll('li').length === 0) card.remove();
+      } else {
         li.style.opacity = '';
         li.style.pointerEvents = '';
         undoSpan.remove();
-      });
-      li.querySelector('div.flex-grow-1').appendChild(undoSpan);
-
-      // Commit after 5 seconds
-      timer = setTimeout(function () {
-        if (cancelled) return;
-        fetch(form.action, {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': form.querySelector('[name=_token]').value,
-            'Accept': 'application/json'
-          },
-          body: new FormData(form)
-        }).then(function (r) {
-          if (r.ok) {
-            li.remove();
-            totalCount -= 1;
-            if (totalCount <= 0) {
-              document.getElementById('overdue-card').remove();
-            } else {
-              // Update header count
-              var header = document.querySelector('#overdue-card .pa3.bb p');
-              if (header) {
-                var text = header.textContent.replace(/\(\d+\)/, '(' + totalCount + ')');
-                header.textContent = text;
-              }
-            }
-          } else {
-            // Server error — restore row
-            li.style.opacity = '';
-            li.style.pointerEvents = '';
-            undoSpan.remove();
-          }
-        }).catch(function () {
-          li.style.opacity = '';
-          li.style.pointerEvents = '';
-          undoSpan.remove();
-        });
-      }, 5000);
+      }
+    }).catch(function () {
+      li.style.opacity = '';
+      li.style.pointerEvents = '';
+      undoSpan.remove();
     });
-  });
-}());
+  }, 5000);
+});
 </script>
 @endif
