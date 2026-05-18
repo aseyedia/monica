@@ -211,6 +211,10 @@ class DashboardController extends Controller
             $reminder->save();
         }
 
+        if (request()->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
         return redirect()->route('dashboard.index');
     }
 
