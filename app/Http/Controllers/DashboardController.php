@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helpers\DateHelper;
 use App\Models\Contact\Debt;
+use App\Models\Contact\Reminder;
+use App\Models\Contact\ReminderOutbox;
 use Illuminate\Http\Request;
 use App\Helpers\AccountHelper;
 use function Safe\json_encode;
@@ -78,6 +80,19 @@ class DashboardController extends Controller
             2 => AccountHelper::getUpcomingRemindersForMonth(auth()->user()->account, 2),
         ];
 
+        // Overdue: past-due entries OR any "overdue" nature entries (fired but unresolved)
+        $overdueReminders = auth()->user()->account->reminderOutboxes()
+            ->with(['reminder', 'reminder.contact'])
+            ->where('user_id', auth()->user()->id)
+            ->where(function ($q) {
+                $q->where('planned_date', '<', now(DateHelper::getTimezone())->toDateString())
+                  ->orWhere('nature', 'overdue');
+            })
+            ->orderBy('planned_date', 'asc')
+            ->get()
+            ->filter(fn ($o) => $o->reminder && $o->reminder->contact)
+            ->unique('reminder_id');
+
         $data = [
             'lastUpdatedContacts' => $lastUpdatedContactsCollection,
             'number_of_contacts' => $numberOfContacts,
@@ -92,6 +107,7 @@ class DashboardController extends Controller
             'user' => auth()->user(),
             'changelogs' => $changelogs,
             'reminderOutboxes' => $reminderOutboxes,
+            'overdueReminders' => $overdueReminders,
         ];
 
         return view('dashboard.index', $data);
@@ -171,6 +187,28 @@ class DashboardController extends Controller
         }
 
         return $debtsCollection;
+    }
+
+    /**
+     * Dismiss all overdue outbox entries for a reminder and mark it inactive.
+     */
+    public function dismissOverdue(Reminder $reminder)
+    {
+        // Ensure reminder belongs to this account
+        abort_unless($reminder->account_id === auth()->user()->account_id, 403);
+
+        // Delete all overdue follow-up entries for this reminder
+        ReminderOutbox::where('reminder_id', $reminder->id)
+            ->where('nature', 'overdue')
+            ->delete();
+
+        // Mark one-time reminders as inactive so no new follow-ups are scheduled
+        if ($reminder->frequency_type === 'one_time') {
+            $reminder->inactive = true;
+            $reminder->save();
+        }
+
+        return redirect()->route('dashboard.index');
     }
 
     /**

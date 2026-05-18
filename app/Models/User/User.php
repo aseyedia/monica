@@ -245,14 +245,20 @@ class User extends Authenticatable implements MustVerifyEmail, HasLocalePreferen
 
         $now = now($this->timezone);
 
+        // Compare date strings to avoid UTC-vs-user-timezone midnight mismatch.
+        // planned_date is stored as a UTC date but represents a calendar day
+        // the user intends in their own timezone.
+        $dateStr = $date->toDateString();
+        $todayStr = $now->toDateString();
+
         // Overdue reminders (past their due date) are sent immediately on the
         // next scheduled run, without waiting for the configured hour.
-        if ($date->startOfDay()->lt($now->copy()->startOfDay())) {
+        if ($dateStr < $todayStr) {
             return true;
         }
 
         // Due today: only send at the configured hour.
-        if ($date->isSameDay($now)) {
+        if ($dateStr === $todayStr) {
             return $now->isSameHour($this->account->default_time_reminder_is_sent);
         }
 

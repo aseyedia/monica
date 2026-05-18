@@ -34,6 +34,7 @@ return [
     'statistics_activities' => 'Activities',
     'statistics_gifts' => 'Gifts',
 
+    'reminders_overdue' => 'Overdue (:count)',
     'reminders_next_months' => 'Events in the next 3 months',
     'reminders_none' => 'No reminders for this month.',
 

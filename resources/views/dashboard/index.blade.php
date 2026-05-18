@@ -32,6 +32,7 @@
     <section class="ph3 ph5-ns cf w-100 bg-gray-monica">
       <div class="mw9 center">
         <div class="{{ htmldir() == 'ltr' ? 'fl' : 'fr' }} w-50-ns w-100 pa2">
+          @include('dashboard._overdueReminder', ['overdueReminders' => $overdueReminders])
           <div class="br3 ba b--gray-monica bg-white mb4">
             <div class="pa3 bb b--gray-monica">
               <p class="mb1 b">

@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified', 'mfa'])->group(function () {
         Route::get('/dashboard/notes', 'DashboardController@notes');
         Route::get('/dashboard/debts', 'DashboardController@debts');
         Route::post('/dashboard/setTab', 'DashboardController@setTab');
+        Route::post('/dashboard/reminders/{reminder}/dismiss', 'DashboardController@dismissOverdue')->name('reminders.dismiss');
     });
 
     Route::get('/store/{file}', 'StorageController@show')->where('file', '.*')->name('storage');
