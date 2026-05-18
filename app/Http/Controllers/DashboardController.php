@@ -193,9 +193,9 @@ class DashboardController extends Controller
     /**
      * Dismiss all overdue outbox entries for a reminder and mark it inactive.
      */
-    public function dismissOverdue(string $reminderId)
+    public function dismissOverdue(string $reminder)
     {
-        $id = app(IdHasher::class)->decodeId($reminderId);
+        $id = app(IdHasher::class)->decodeId($reminder);
         $reminder = Reminder::where('account_id', auth()->user()->account_id)
             ->where('id', $id)
             ->firstOrFail();
